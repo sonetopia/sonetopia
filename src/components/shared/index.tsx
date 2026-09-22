@@ -1,0 +1,155 @@
+import type { ReactNode } from "react"
+import { Link } from "react-router-dom"
+import { cn } from "cn"
+import { AudioLines, type LucideIcon } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { AUDIO_KINDS, type AudioKind, type Track } from "@/lib/library"
+
+export function Brand({
+  subtitle = "Private audio library",
+  className,
+}: {
+  subtitle?: string
+  className?: string
+}) {
+  return (
+    <Link to="/" className={cn("flex items-center gap-2", className)}>
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg text-primary-foreground">
+        <img src="/logo-orange-small.png" alt="Sonetopia" className="size-7" />
+      </span>
+      <span className="leading-tight">
+        <span className="block font-heading text-sm font-semibold">Sonetopia</span>
+        <span className="block text-[11px] text-muted-foreground">{subtitle}</span>
+      </span>
+    </Link>
+  )
+}
+
+export function AudioCover({ track, className }: { track: Track; className?: string }) {
+  const meta = AUDIO_KINDS[track.kind]
+  const Icon = meta.icon
+
+  if (track.coverUrl) {
+    return (
+      <img
+        src={track.coverUrl}
+        alt=""
+        className={cn("size-10 shrink-0 rounded-lg object-cover", className)}
+      />
+    )
+  }
+
+  return (
+    <div
+      aria-hidden
+      className={cn(
+        "grid size-10 shrink-0 place-items-center rounded-lg bg-linear-to-br",
+        meta.cover,
+        className
+      )}
+    >
+      <Icon className="size-4" />
+    </div>
+  )
+}
+
+export function KindBadge({ kind, className }: { kind: AudioKind; className?: string }) {
+  const meta = AUDIO_KINDS[kind]
+  const Icon = meta.icon
+
+  return (
+    <Badge variant="secondary" className={cn("gap-1 font-normal", className)}>
+      <Icon />
+      {meta.label}
+    </Badge>
+  )
+}
+
+export function PageHeader({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description?: string
+  children?: ReactNode
+}) {
+  return (
+    <header className="flex flex-wrap items-end justify-between gap-3">
+      <div className="space-y-1">
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">{title}</h1>
+        {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
+      </div>
+      {children ? <div className="flex flex-wrap items-center gap-2">{children}</div> : null}
+    </header>
+  )
+}
+
+export function SectionHeader({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description?: string
+  children?: ReactNode
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-2">
+      <div className="space-y-0.5">
+        <h2 className="font-heading text-lg font-semibold tracking-tight">{title}</h2>
+        {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
+      </div>
+      {children ? <div className="flex items-center gap-2">{children}</div> : null}
+    </div>
+  )
+}
+
+export function StatCard({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon
+  label: string
+  value: string
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
+      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground">
+        <Icon className="size-4" />
+      </span>
+      <div className="leading-tight">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm font-medium">{value}</p>
+      </div>
+    </div>
+  )
+}
+
+export function EmptyState({
+  icon: Icon = AudioLines,
+  title,
+  description,
+  action,
+}: {
+  icon?: LucideIcon
+  title: string
+  description?: string
+  action?: ReactNode
+}) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-12 text-center">
+      <span className="grid size-10 place-items-center rounded-full bg-muted text-muted-foreground">
+        <Icon className="size-5" />
+      </span>
+      <div className="space-y-1">
+        <p className="text-sm font-medium">{title}</p>
+        {description ? (
+          <p className="mx-auto max-w-sm text-xs text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
+      {action}
+    </div>
+  )
+}
