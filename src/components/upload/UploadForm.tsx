@@ -107,7 +107,7 @@ export function UploadForm() {
         <input
           ref={inputRef}
           type="file"
-          accept="audio/*"
+          accept=".mp3,.wav,.m4a,.aac,.ogg,.flac,audio/mpeg,audio/wav,audio/mp4,audio/aac,audio/ogg,audio/flac"
           multiple
           className="hidden"
           onChange={(event) => addFiles(Array.from(event.target.files ?? []))}
