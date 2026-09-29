@@ -34,7 +34,12 @@ export function AppShell() {
           </span>
         </header>
 
-        <main className={cn("min-w-0 flex-1 px-4 py-5 sm:px-6", current ? "pb-32" : "pb-10")}>
+        <main
+          className={cn(
+            "min-w-0 flex-1 px-4 py-5 sm:px-6",
+            current ? "pb-[calc(var(--player-bar-height,4.5rem)+2rem)]" : "pb-10"
+          )}
+        >
           <Outlet />
         </main>
       </SidebarInset>

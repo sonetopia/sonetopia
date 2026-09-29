@@ -18,6 +18,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { NavUser } from "@/components/layout/NavUser"
 import { PlaylistForm } from "@/components/playlist/PlaylistForm"
@@ -36,17 +37,25 @@ export function AppSidebar() {
   const { pathname } = useLocation()
   const { playlists, createPlaylist } = useLibrary()
   const { current } = usePlayer()
+  // the mobile sidebar is a sheet, so it has to close itself when a link navigates
+  const { setOpenMobile } = useSidebar()
+  const closeMobile = () => setOpenMobile(false)
 
   return (
     <Sidebar
       collapsible="icon"
-      // ponytail: 4rem matches the player bar height so the footer stays visible while playing
-      className={current ? "h-[calc(100svh-4rem)]" : undefined}
+      // the player bar publishes --player-bar-height, so the footer never hides behind it
+      className={current ? "h-[calc(100svh-var(--player-bar-height,4.5rem))]" : undefined}
     >
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" tooltip="Sonetopia" render={<Link to="/dashboard" />}>
+            <SidebarMenuButton
+              size="lg"
+              tooltip="Sonetopia"
+              onClick={closeMobile}
+              render={<Link to="/dashboard" />}
+            >
               <span className="grid size-8 shrink-0 place-items-center rounded-lg text-primary-foreground">
                 <img src="/logo-orange-small.png" alt="Sonetopia" className="size-7" />
               </span>
@@ -70,6 +79,7 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     tooltip={item.label}
                     isActive={pathname.startsWith(item.to)}
+                    onClick={closeMobile}
                     render={<NavLink to={item.to} />}
                   >
                     <item.icon />
@@ -105,6 +115,7 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     tooltip={playlist.name}
                     isActive={pathname === `/playlists/${playlist.id}`}
+                    onClick={closeMobile}
                     render={<NavLink to={`/playlists/${playlist.id}`} />}
                   >
                     <ListMusic />

@@ -9,8 +9,6 @@ import {
   Shuffle,
   SkipBack,
   SkipForward,
-  Volume2,
-  VolumeX,
   X,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -92,10 +90,10 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-          <section className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 overflow-y-auto bg-linear-to-b from-accent/60 to-transparent p-5 text-center sm:gap-5 sm:p-6">
+          <section className="flex shrink-0 flex-col items-center justify-center gap-3 bg-linear-to-b from-accent/60 to-transparent p-4 text-center sm:gap-4 sm:p-6 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
             <AudioCover
               track={current}
-              className="size-32 shrink-0 rounded-2xl sm:size-40 lg:size-44"
+              className="size-24 shrink-0 rounded-2xl sm:size-36 lg:size-44"
             />
 
             <div className="w-full max-w-lg space-y-1">
@@ -113,11 +111,13 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
                 max={Math.max(duration, 1)}
                 step={1}
                 value={scrub ?? position}
-                onValueChange={(value) => setScrub(value as number)}
-                onValueCommitted={(value) => {
-                  seek(value as number)
-                  setScrub(null)
+                onValueChange={(value) => {
+                  const next = value as number
+                  setScrub(next)
+                  seek(next)
                 }}
+                onValueCommitted={() => setScrub(null)}
+                onPointerUp={() => setScrub(null)}
               />
               <div className="flex justify-between text-[11px] tabular-nums text-muted-foreground">
                 <span>{timeLabel(scrub ?? position)}</span>
@@ -134,21 +134,21 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
                 className={cn(shuffle && "text-primary")}
                 onClick={toggleShuffle}
               >
-                <Shuffle />
+                <Shuffle className="size-5" />
               </Button>
               <Button variant="ghost" size="icon" aria-label="Previous track" onClick={previous}>
-                <SkipBack />
+                <SkipBack className="size-5" />
               </Button>
               <Button
                 size="icon-lg"
-                className="rounded-full"
+                className="rounded-full p-5"
                 aria-label={isPlaying ? "Pause" : "Play"}
                 onClick={toggle}
               >
-                {isPlaying ? <Pause /> : <Play />}
+                {isPlaying ? <Pause className="size-6" /> : <Play className="size-6" />}
               </Button>
               <Button variant="ghost" size="icon" aria-label="Next track" onClick={next}>
-                <SkipForward />
+                <SkipForward className="size-5" />
               </Button>
               <Button
                 variant="ghost"
@@ -158,19 +158,11 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
                 className={cn(repeat !== "off" && "text-primary")}
                 onClick={cycleRepeat}
               >
-                {repeat === "one" ? <Repeat1 /> : <Repeat />}
+                {repeat === "one" ? <Repeat1 className="size-5" /> : <Repeat className="size-5" />}
               </Button>
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={volume > 0 ? "Mute" : "Unmute"}
-                onClick={() => setVolume(volume > 0 ? 0 : 0.8)}
-              >
-                {volume > 0 ? <Volume2 /> : <VolumeX />}
-              </Button>
               <Slider
                 className="w-40"
                 aria-label="Volume"
@@ -183,7 +175,7 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
             </div>
           </section>
 
-          <aside className="flex min-h-0 w-full shrink-0 flex-col border-t lg:w-80 lg:border-t-0 lg:border-l">
+          <aside className="flex min-h-0 flex-1 flex-col border-t lg:w-80 lg:flex-none lg:border-t-0 lg:border-l">
             <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-3">
               <div>
                 <p className="text-sm font-medium">Up next</p>

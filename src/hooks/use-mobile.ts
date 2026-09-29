@@ -1,25 +1,31 @@
-import { useSyncExternalStore } from "react"
+import { useCallback, useMemo, useSyncExternalStore } from "react"
 
-const MOBILE_BREAKPOINT = 768
-const QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`
+export const MOBILE_BREAKPOINT = 768
 
-let mediaQuery: MediaQueryList | null = null
+const mediaQueries = new Map<string, MediaQueryList>()
 
-function getMediaQuery() {
-  mediaQuery ??= window.matchMedia(QUERY)
+function getMediaQuery(breakpoint: number) {
+  const query = `(max-width: ${breakpoint - 1}px)`
+  const cached = mediaQueries.get(query)
+  if (cached) return cached
+  const mediaQuery = window.matchMedia(query)
+  mediaQueries.set(query, mediaQuery)
   return mediaQuery
 }
 
-function subscribe(onStoreChange: () => void) {
-  const mql = getMediaQuery()
-  mql.addEventListener("change", onStoreChange)
-  return () => mql.removeEventListener("change", onStoreChange)
-}
+/** Reactive `window.matchMedia("(max-width: ...)")` — updates on resize and rotation. */
+export function useIsMobile(breakpoint = MOBILE_BREAKPOINT) {
+  const mediaQuery = useMemo(() => getMediaQuery(breakpoint), [breakpoint])
 
-export function useIsMobile() {
-  return useSyncExternalStore(
-    subscribe,
-    () => getMediaQuery().matches,
-    () => false
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      mediaQuery.addEventListener("change", onStoreChange)
+      return () => mediaQuery.removeEventListener("change", onStoreChange)
+    },
+    [mediaQuery]
   )
+
+  const getSnapshot = useCallback(() => mediaQuery.matches, [mediaQuery])
+
+  return useSyncExternalStore(subscribe, getSnapshot, () => false)
 }
