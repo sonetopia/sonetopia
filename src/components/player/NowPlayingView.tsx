@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
-import { AudioCover } from "@/components/shared"
+import { AudioCover, CoverPlayButton } from "@/components/shared"
 import { QueueTrackActions } from "@/components/queue/QueueTrackActions"
 import { usePlayer } from "@/components/player/PlayerProvider"
 import { AUDIO_KINDS, formatDuration } from "@/lib/library"
@@ -203,16 +203,11 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
                       key={`${track.id}-${index}`}
                       className="flex items-center gap-2 rounded-lg p-1 pr-0.5 hover:bg-accent/60"
                     >
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="text-muted-foreground"
-                        aria-label={`Play ${track.title} now`}
-                        onClick={() => jumpTo(index)}
-                      >
-                        <Play />
-                      </Button>
-                      <AudioCover track={track} className="size-8" />
+                      <CoverPlayButton
+                        track={track}
+                        onToggle={() => jumpTo(index)}
+                        className="size-8"
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm">{track.title}</p>
                         <p className="truncate text-xs text-muted-foreground">{track.artist}</p>

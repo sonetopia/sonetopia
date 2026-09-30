@@ -24,7 +24,7 @@ export function TrackActions({ track }: { track: Track }) {
       >
         <MoreHorizontal />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent className="w-50" align="end">
         <DropdownMenuItem onClick={() => enqueueNext(track)}>
           <ListPlus />
           Play next

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { cn } from "cn"
-import { AudioLines, type LucideIcon } from "lucide-react"
+import { AudioLines, Pause, Play, type LucideIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { AUDIO_KINDS, type AudioKind, type Track } from "@/lib/library"
 
@@ -34,7 +34,7 @@ export function AudioCover({ track, className }: { track: Track; className?: str
       <img
         src={track.coverUrl}
         alt=""
-        className={cn("size-10 shrink-0 rounded-lg object-cover", className)}
+        className={cn("size-10 shrink-0 rounded-md object-cover", className)}
       />
     )
   }
@@ -43,12 +43,41 @@ export function AudioCover({ track, className }: { track: Track; className?: str
     <div
       aria-hidden
       className={cn(
-        "grid size-10 shrink-0 place-items-center rounded-lg bg-linear-to-br",
+        "grid size-10 shrink-0 place-items-center rounded-md bg-linear-to-br",
         meta.cover,
         className
       )}
     >
       <Icon className="size-4" />
+    </div>
+  )
+}
+
+/** Cover with a hover/focus play-pause overlay; the overlay is always visible on touch devices. */
+export function CoverPlayButton({
+  track,
+  playing = false,
+  onToggle,
+  className,
+}: {
+  track: Track
+  playing?: boolean
+  onToggle: () => void
+  className?: string
+}) {
+  return (
+    <div className={cn("group/cover relative size-10 shrink-0", className)}>
+      <AudioCover track={track} className="size-full" />
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={playing ? `Pause ${track.title}` : `Play ${track.title}`}
+        className="absolute inset-0 grid cursor-pointer place-items-center rounded-md bg-black/0 text-white transition-colors hover:bg-black/45 focus-visible:bg-black/45 focus-visible:outline-none"
+      >
+        <span className="grid place-items-center opacity-0 transition-opacity group-hover/cover:opacity-100 group-focus-within/cover:opacity-100 pointer-coarse:opacity-100">
+          {playing ? <Pause className="size-5" /> : <Play className="size-5" />}
+        </span>
+      </button>
     </div>
   )
 }

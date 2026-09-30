@@ -1,8 +1,7 @@
 import type { ReactNode } from "react"
 import { cn } from "cn"
-import { AudioLines, Pause, Play } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { AudioCover, EmptyState, KindBadge } from "@/components/shared"
+import { AudioLines } from "lucide-react"
+import { CoverPlayButton, EmptyState, KindBadge } from "@/components/shared"
 import { usePlayer } from "@/components/player/PlayerProvider"
 import { formatDate, formatDuration, type Track } from "@/lib/library"
 
@@ -43,27 +42,23 @@ export function TrackList({
   }
 
   return (
-    <ul className={cn("flex flex-col gap-0.5", className)}>
+    <ul className={cn("flex flex-col gap-1", className)}>
       {tracks.map((track, index) => {
         const active = current?.id === track.id
         return (
           <li
             key={`${track.id}-${index}`}
             className={cn(
-              "group flex items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-accent/50 sm:gap-3",
+              "group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent/50 sm:gap-3",
               active && "bg-accent/70 hover:bg-accent/70"
             )}
           >
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="text-muted-foreground"
-              aria-label={active && isPlaying ? `Pause ${track.title}` : `Play ${track.title}`}
-              onClick={() => (active ? toggle() : onPlay(track, index))}
-            >
-              {active && isPlaying ? <Pause /> : <Play />}
-            </Button>
-            <AudioCover track={track} className="size-9" />
+            <CoverPlayButton
+              track={track}
+              playing={active && isPlaying}
+              onToggle={() => (active ? toggle() : onPlay(track, index))}
+              className="size-9"
+            />
             <div className="min-w-0 flex-1">
               <p className={cn("truncate text-sm font-medium", active && "text-primary")}>
                 {track.title}
