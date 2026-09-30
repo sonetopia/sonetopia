@@ -36,6 +36,16 @@ function PlaylistCover({ tracks }: { tracks: Track[] }) {
     return <AudioCover track={tracks[0]} className="size-full rounded-none" />
   }
 
+  if (tracks.length === 2) {
+    return (
+      <span className="grid size-full grid-cols-2 grid-rows-1 gap-px bg-muted">
+        {tracks.slice(0, 2).map((track) => (
+          <AudioCover key={track.id} track={track} className="size-full rounded-none" />
+        ))}
+      </span>
+    )
+  }
+
   return (
     <span className="grid size-full grid-cols-2 grid-rows-2 gap-px bg-muted">
       {tracks.slice(0, 4).map((track) => (
