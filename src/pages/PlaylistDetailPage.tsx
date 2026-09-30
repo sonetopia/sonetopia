@@ -121,9 +121,9 @@ export function PlaylistDetailPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title={playlist.name} description={playlist.description || "No description"}>
+      <PageHeader title={playlist.name}>
         <PlaylistForm
-          initial={{ name: playlist.name, description: playlist.description }}
+          initial={{ name: playlist.name }}
           onSubmit={(values) => updatePlaylist(playlist.id, values)}
           trigger={
             <Button variant="outline" size="sm">

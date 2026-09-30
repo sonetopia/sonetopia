@@ -42,7 +42,6 @@ export type Track = {
 export type Playlist = {
   id: string
   name: string
-  description: string
   trackIds: string[]
   createdAt: string
 }
@@ -202,29 +201,65 @@ export const SEED_TRACKS: Track[] = [
     addedAt: daysAgo(15),
     origin: "demo",
   },
+  {
+    id: "demo-9",
+    title: "Ocean Waves — Gentle Surf",
+    artist: "Ambience Lab",
+    kind: "ambience",
+    src: sample(9),
+    duration: 3600,
+    tags: ["white noise", "sleep"],
+    addedAt: daysAgo(8),
+    origin: "demo",
+  },
+  {
+    id: "demo-10",
+    title: "Chapter 2 — The Journey Begins",
+    artist: "Spoken Books",
+    kind: "audiobook",
+    src: sample(10),
+    duration: 1500,
+    tags: ["novel"],
+    addedAt: daysAgo(12),
+    origin: "demo",
+  },
+  {
+    id: "demo-11",
+    title: "Neon Drive (Extended Mix)",
+    artist: "Retro Kid",
+    kind: "music",
+    src: sample(11),
+    duration: 310,
+    tags: ["synthwave", "driving"],
+    addedAt: daysAgo(15),
+    origin: "demo",
+  },
 ]
 
 export const SEED_PLAYLISTS: Playlist[] = [
   {
     id: "pl-focus",
     name: "Deep Work",
-    description: "Instrumentals and lofi for long work sessions.",
     trackIds: ["demo-2", "demo-1", "demo-8"],
     createdAt: daysAgo(10),
   },
   {
     id: "pl-sleep",
     name: "Sleep Tight",
-    description: "Ambience to fall asleep to.",
     trackIds: ["demo-4", "demo-6"],
     createdAt: daysAgo(7),
   },
   {
     id: "pl-podcast",
     name: "Morning Podcast",
-    description: "Listen while walking in the morning.",
     trackIds: ["demo-3"],
     createdAt: daysAgo(3),
+  },
+  {
+    id: "pl-audiobook",
+    name: "Audiobook Adventures",
+    trackIds: ["demo-7"],
+    createdAt: daysAgo(12),
   },
 ]
 
@@ -244,8 +279,8 @@ type LibraryValue = {
   addUploads: (inputs: UploadInput[]) => number
   removeTrack: (id: string) => void
   setTrackDuration: (id: string, duration: number) => void
-  createPlaylist: (input: { name: string; description: string }) => Playlist
-  updatePlaylist: (id: string, patch: { name?: string; description?: string }) => void
+  createPlaylist: (input: { name: string }) => Playlist
+  updatePlaylist: (id: string, patch: { name?: string }) => void
   deletePlaylist: (id: string) => void
   addTrackToPlaylist: (playlistId: string, trackId: string) => void
   removeTrackFromPlaylist: (playlistId: string, trackId: string) => void
@@ -307,7 +342,6 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     const playlist: Playlist = {
       id: `pl-${Date.now()}`,
       name: input.name.trim(),
-      description: input.description.trim(),
       trackIds: [],
       createdAt: new Date().toISOString(),
     }

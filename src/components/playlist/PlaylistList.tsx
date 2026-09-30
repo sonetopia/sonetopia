@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { cn } from "cn"
-import { ListMusic, MoreHorizontal, Pencil, Play, Shuffle, Trash2 } from "lucide-react"
+import { ListMusic, MoreHorizontal, Play, Shuffle, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -19,21 +19,25 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { AudioCover, EmptyState } from "@/components/shared"
-import { PlaylistForm } from "@/components/playlist/PlaylistForm"
 import { usePlayer } from "@/components/player/PlayerProvider"
 import { formatTotalDuration, useLibrary, type Playlist, type Track } from "@/lib/library"
 
+/** Fills its box edge to edge: single cover, 2x2 collage, or a placeholder. */
 function PlaylistCover({ tracks }: { tracks: Track[] }) {
   if (tracks.length === 0) {
     return (
-      <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground">
-        <ListMusic className="size-5" />
+      <span className="grid size-full place-items-center bg-muted text-muted-foreground">
+        <ListMusic className="size-6" />
       </span>
     )
   }
 
+  if (tracks.length === 1) {
+    return <AudioCover track={tracks[0]} className="size-full rounded-none" />
+  }
+
   return (
-    <span className="grid size-14 shrink-0 grid-cols-2 gap-0.5 overflow-hidden rounded-xl">
+    <span className="grid size-full grid-cols-2 grid-rows-2 gap-px bg-muted">
       {tracks.slice(0, 4).map((track) => (
         <AudioCover key={track.id} track={track} className="size-full rounded-none" />
       ))}
@@ -48,7 +52,7 @@ type PlaylistListProps = {
 }
 
 export function PlaylistList({ playlists, emptyAction, layout = "grid" }: PlaylistListProps) {
-  const { tracksByIds, deletePlaylist, updatePlaylist } = useLibrary()
+  const { tracksByIds, deletePlaylist } = useLibrary()
   const { playTracks } = usePlayer()
 
   if (playlists.length === 0) {
@@ -68,37 +72,28 @@ export function PlaylistList({ playlists, emptyAction, layout = "grid" }: Playli
         "py-1 ps-[1px]",
         layout === "rail"
           ? "flex gap-3 overflow-x-auto"
-          : "grid gap-3 sm:grid-cols-2 2xl:grid-cols-3"
+          : "grid gap-3 sm:grid-cols-4 2xl:grid-cols-6"
       )}
     >
       {playlists.map((playlist) => {
         const tracks = tracksByIds(playlist.trackIds)
         return (
-          <Card key={playlist.id} className={cn(layout === "rail" && "w-72 shrink-0")}>
-            <CardHeader>
-              <div className="flex min-w-0 items-start gap-3">
+          <Card
+            key={playlist.id}
+            className={cn("gap-0 p-0", layout === "rail" ? "w-60 shrink-0" : "w-full")}
+          >
+            <CardHeader className="relative block aspect-[3/2] p-0">
+              <div className="absolute inset-0">
                 <PlaylistCover tracks={tracks} />
-                <div className="min-w-0 space-y-1">
-                  <CardTitle className="truncate">
-                    <Link to={`/playlists/${playlist.id}`} className="hover:underline">
-                      {playlist.name}
-                    </Link>
-                  </CardTitle>
-                  <CardDescription>
-                    {tracks.length} tracks · {formatTotalDuration(tracks)}
-                  </CardDescription>
-                  <p className="line-clamp-2 text-xs text-muted-foreground">
-                    {playlist.description || "No description"}
-                  </p>
-                </div>
               </div>
-              <CardAction>
+              <CardAction className="absolute top-2 right-2 z-10">
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
                       <Button
-                        variant="ghost"
+                        variant="secondary"
                         size="icon-sm"
+                        className="bg-background/70 backdrop-blur-sm hover:bg-background"
                         aria-label={`Actions for playlist ${playlist.name}`}
                       />
                     }
@@ -132,21 +127,20 @@ export function PlaylistList({ playlists, emptyAction, layout = "grid" }: Playli
                 </DropdownMenu>
               </CardAction>
             </CardHeader>
-            <CardFooter className="gap-2">
-              <Button size="sm" disabled={tracks.length === 0} onClick={() => playTracks(tracks, 0)}>
-                <Play />
-                Play
-              </Button>
-              <PlaylistForm
-                initial={{ name: playlist.name, description: playlist.description }}
-                onSubmit={(values) => updatePlaylist(playlist.id, values)}
-                trigger={
-                  <Button size="sm" variant="ghost">
-                    <Pencil />
-                    Edit
-                  </Button>
-                }
-              />
+
+            <CardFooter className="min-w-0 flex-col items-start gap-0.5">
+              <CardTitle className="w-full min-w-0 truncate">
+                <Link
+                  to={`/playlists/${playlist.id}`}
+                  title={playlist.name}
+                  className="hover:underline"
+                >
+                  {playlist.name}
+                </Link>
+              </CardTitle>
+              <CardDescription className="w-full min-w-0 truncate">
+                {tracks.length} tracks · {formatTotalDuration(tracks)}
+              </CardDescription>
             </CardFooter>
           </Card>
         )

@@ -15,7 +15,6 @@ import { Textarea } from "@/components/ui/textarea"
 
 export type PlaylistFormValues = {
   name: string
-  description: string
 }
 
 type PlaylistFormProps = {
@@ -33,19 +32,19 @@ export function PlaylistForm({
 }: PlaylistFormProps) {
   const [open, setOpen] = useState(false)
   const [values, setValues] = useState<PlaylistFormValues>(
-    initial ?? { name: "", description: "" }
+    initial ?? { name: "" }
   )
   const isValid = values.name.trim().length > 0
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
-    if (next) setValues(initial ?? { name: "", description: "" })
+    if (next) setValues(initial ?? { name: "" })
   }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (!isValid) return
-    onSubmit({ name: values.name.trim(), description: values.description.trim() })
+    onSubmit({ name: values.name.trim() })
     setOpen(false)
   }
 
@@ -69,19 +68,6 @@ export function PlaylistForm({
               autoFocus
               placeholder="For example: Deep Work"
               onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="playlist-description">Description</Label>
-            <Textarea
-              id="playlist-description"
-              value={values.description}
-              maxLength={200}
-              rows={3}
-              placeholder="Optional"
-              onChange={(event) =>
-                setValues((prev) => ({ ...prev, description: event.target.value }))
-              }
             />
           </div>
           <DialogFooter>
