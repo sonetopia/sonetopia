@@ -17,22 +17,22 @@ export function PublicShell() {
           <div className="flex items-center gap-1.5">
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon-lg"
               aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
               onClick={toggle}
             >
               {dark ? <Sun /> : <Moon />}
             </Button>
             {user ? (
-              <Button size="sm" render={<Link to="/dashboard" />}>
+              <Button render={<Link to="/dashboard" />}>
                 Open app
               </Button>
             ) : (
               <>
-                <Button variant="ghost" size="sm" render={<Link to="/login" />}>
+                <Button className="py-4" variant="ghost" render={<Link to="/login" />}>
                   Sign in
                 </Button>
-                <Button size="sm" render={<Link to="/register" />}>
+                <Button className="px-5 py-4" render={<Link to="/register" />}>
                   Get started
                 </Button>
               </>

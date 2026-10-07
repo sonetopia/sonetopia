@@ -3,7 +3,6 @@ import {
   ArrowRight,
   AudioLines,
   CircleCheck,
-  HardDrive,
   HardDriveUpload,
   Headphones,
   ListMusic,
@@ -13,9 +12,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/lib/auth"
 
 const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
@@ -25,7 +22,7 @@ const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
     body: "Some phones ship without a way to play your own audio files. Sonetopia runs in the browser and becomes the player your device never had.",
   },
   {
-    icon: HardDrive,
+    icon: Headphones,
     title: "Reclaim your storage",
     body: "Instead of keeping large offline copies on a phone with finite space, stream from your library and keep only what you truly need offline.",
   },
@@ -35,12 +32,12 @@ const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
     body: "Music, podcasts, instrumentals, audiobooks, white noise, field recordings, ambience — if it is audio, it belongs here.",
   },
   {
-    icon: Headphones,
+    icon: Play,
     title: "Keeps playing in the background",
     body: "One player across the whole app. Leave the page, lock the screen, and playback continues with lock-screen controls.",
   },
   {
-    icon: ListMusic,
+    icon: AudioLines,
     title: "Playlists, queue, shuffle, repeat",
     body: "Organize tracks into playlists, line up a real queue, shuffle a playlist, or repeat a single track for a focus session.",
   },
@@ -87,92 +84,117 @@ export function LandingPage() {
   const primaryLabel = user ? "Open your library" : "Create your library"
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-20 px-4 py-12 sm:py-16">
-      <section className="flex flex-col items-center gap-6 text-center">
-        <Badge variant="secondary">Private audio library</Badge>
-        <h1 className="font-heading max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
-          Your audio, everywhere — without eating your storage.
-        </h1>
-        <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
-          Sonetopia is your own audio library in the browser. Built for phones that never shipped an
-          audio player, iPhone included, and for Android users who would rather stream their library
-          than keep gigabytes of offline files on the device.
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button size="lg" render={<Link to={primaryTo} />}>
-            {primaryLabel}
-            <ArrowRight />
-          </Button>
-          {user ? null : (
-            <Button size="lg" variant="outline" render={<Link to="/login" />}>
-              Sign in
-            </Button>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          No feed. No other people's uploads. Just your audio.
-        </p>
-      </section>
-
-      <section className="space-y-6">
-        <div className="space-y-2 text-center">
-          <h2 className="font-heading text-2xl font-semibold tracking-tight">
-            Why people use Sonetopia
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Not a competitor to streaming services — a home for the audio you already have.
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-12">
+      <section className="grid min-h-[min(680px,calc(100svh-9rem))] items-center gap-12 border-b pb-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-20">
+        <div className="space-y-8">
+          <p className="text-xs font-medium uppercase tracking-[0.24em] text-primary">Private audio library</p>
+          <h1 className="font-heading max-w-3xl text-5xl font-semibold leading-[0.98] tracking-[-0.04em] sm:text-7xl">
+            Keep listening. Keep your space.
+          </h1>
+          <p className="max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
+            Sonetopia is a quiet home for the audio you already own. Upload once, then listen from
+            any browser without filling your phone with copies.
           </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <Button size="lg" render={<Link to={primaryTo} />}>
+              {primaryLabel}
+              <ArrowRight />
+            </Button>
+            {!user && (
+              <Link className="text-sm font-medium underline-offset-4 hover:underline" to="/login">
+                Sign in
+              </Link>
+            )}
+          </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((feature) => (
-            <Card key={feature.title} size="sm">
-              <CardHeader>
-                <span className="grid size-9 place-items-center rounded-lg bg-accent text-accent-foreground">
-                  <feature.icon className="size-4" />
-                </span>
-                <CardTitle>{feature.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">{feature.body}</CardContent>
-            </Card>
-          ))}
+
+        <div className="relative overflow-hidden rounded-[2rem] bg-foreground p-6 text-background sm:p-8">
+          <div className="absolute inset-x-0 top-0 h-1 bg-primary" />
+          <div className="flex min-h-72 flex-col justify-between gap-10">
+            <div className="flex items-center justify-between text-xs text-background/60">
+              <span>NOW PLAYING</span>
+              <span>01 / 03</span>
+            </div>
+            <div className="space-y-5">
+              <div className="flex h-20 items-end gap-1.5" aria-hidden="true">
+                {[35, 54, 42, 72, 48, 86, 60, 35, 67, 46, 78, 52, 40, 62, 30, 74, 48, 58].map(
+                  (height, index) => (
+                    <span key={index} className="w-full rounded-full bg-primary" style={{ height: `${height}%` }} />
+                  ),
+                )}
+              </div>
+              <div>
+                <p className="text-2xl font-medium tracking-tight">A room of your own</p>
+                <p className="mt-1 text-sm text-background/60">Your library, wherever you are</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between border-t border-background/15 pt-4 text-sm text-background/60">
+              <span>Sonetopia</span>
+              <Play className="size-4 fill-current text-primary" />
+            </div>
+          </div>
         </div>
       </section>
 
-      <section id="how-it-works" className="scroll-mt-20 space-y-6">
-        <div className="space-y-2 text-center">
-          <h2 className="font-heading text-2xl font-semibold tracking-tight">How it works</h2>
-          <p className="text-sm text-muted-foreground">Three steps, then just listening.</p>
+      <section className="grid gap-12 border-b py-20 lg:grid-cols-[0.7fr_1.3fr]">
+        <div className="space-y-3">
+          <p className="text-xs font-medium uppercase tracking-[0.24em] text-primary">Why Sonetopia</p>
+          <h2 className="font-heading max-w-xs text-3xl font-semibold leading-tight tracking-[-0.03em]">
+            Made for listening, not scrolling.
+          </h2>
         </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {STEPS.map((step) => (
-            <div key={step.title} className="space-y-2 rounded-xl border bg-card p-5">
-              <span className="grid size-9 place-items-center rounded-lg bg-primary/12 text-primary">
-                <step.icon className="size-4" />
-              </span>
-              <p className="font-medium">{step.title}</p>
-              <p className="text-sm text-muted-foreground">{step.body}</p>
+        <div className="grid gap-x-10 gap-y-6 sm:grid-cols-2">
+          {FEATURES.map((feature) => (
+            <div key={feature.title} className="space-y-3 border-t pt-4">
+              <div className="flex items-center gap-3">
+                <feature.icon className="size-5 text-primary" />
+                <h3 className="font-medium">{feature.title}</h3>
+              </div>
+              <p className="text-sm leading-6 text-muted-foreground">{feature.body}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="grid gap-6 rounded-2xl border bg-card p-6 sm:p-10 lg:grid-cols-2">
-        <div className="space-y-3">
-          <h2 className="font-heading text-xl font-semibold">What Sonetopia is</h2>
-          <ul className="space-y-2">
+      <section id="how-it-works" className="scroll-mt-20 border-b pt-20 pb-10">
+        <div className="mb-10 flex items-end justify-between gap-6">
+          <div className="space-y-3">
+            <p className="text-xs font-medium uppercase tracking-[0.24em] text-primary">A simple ritual</p>
+            <h2 className="font-heading text-3xl font-semibold tracking-[-0.03em]">From file to favorite.</h2>
+          </div>
+          <span className="hidden text-sm text-muted-foreground sm:block">Three steps, then just listening.</span>
+        </div>
+        <div className="grid gap-8 sm:grid-cols-3">
+          {STEPS.map((step) => (
+            <div key={step.title} className="space-y-4 border-t pt-8">
+              <div className="flex items-center justify-between">
+                <step.icon className="size-5 text-primary" />
+                <span className="font-mono text-xs text-muted-foreground">0{STEPS.indexOf(step) + 1}</span>
+              </div>
+              <p className="font-medium">{step.title.replace(/^\d+\. /, "")}</p>
+              <p className="text-sm leading-6 text-muted-foreground">{step.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="grid gap-10 py-20 lg:grid-cols-2">
+        <div className="space-y-4">
+          <h2 className="font-heading text-2xl font-semibold tracking-[-0.02em]">Yours, by design.</h2>
+          <ul className="space-y-3">
             {IS_LIST.map((item) => (
-              <li key={item} className="flex items-start gap-2 text-sm">
+              <li key={item} className="flex items-start gap-3 text-sm">
                 <CircleCheck className="mt-0.5 size-4 shrink-0 text-primary" />
                 {item}
               </li>
             ))}
           </ul>
         </div>
-        <div className="space-y-3">
-          <h2 className="font-heading text-xl font-semibold">What it is not</h2>
-          <ul className="space-y-2">
+        <div className="space-y-4 lg:border-l lg:pl-10">
+          <h2 className="font-heading text-2xl font-semibold tracking-[-0.02em] text-muted-foreground">Nothing else.</h2>
+          <ul className="space-y-3">
             {IS_NOT_LIST.map((item) => (
-              <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+              <li key={item} className="flex items-start gap-3 text-sm text-muted-foreground">
                 <X className="mt-0.5 size-4 shrink-0" />
                 {item}
               </li>
@@ -181,23 +203,15 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="flex flex-col items-center gap-4 rounded-2xl bg-accent/60 p-8 text-center sm:p-12">
-        <h2 className="font-heading text-2xl font-semibold tracking-tight">
-          Start your private library today
-        </h2>
-        <p className="max-w-xl text-sm text-muted-foreground">
-          Bring your files, build playlists, and listen from any browser — with a real queue,
-          shuffle, repeat, and background playback.
-        </p>
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button size="lg" render={<Link to={primaryTo} />}>
-            {primaryLabel}
-            <ArrowRight />
-          </Button>
-          <Button size="lg" variant="outline" render={<a href="#how-it-works" />}>
-            See how it works
-          </Button>
+      <section className="flex flex-col gap-6 items-center border-t pt-12 sm:flex-row sm:justify-between">
+        <div className="space-y-2">
+          <h2 className="font-heading text-3xl font-semibold tracking-[-0.03em]">Bring your sound with you.</h2>
+          <p className="max-w-lg text-sm leading-6 text-muted-foreground">A private library, and more room on your device.</p>
         </div>
+        <Button size="lg" render={<Link to={primaryTo} />}>
+          {primaryLabel}
+          <ArrowRight />
+        </Button>
       </section>
     </div>
   )
