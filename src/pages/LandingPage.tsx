@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom"
+import { useEffect, useRef, useState } from "react"
 import {
   ArrowRight,
   AudioLines,
@@ -7,8 +8,10 @@ import {
   HardDriveUpload,
   Headphones,
   ListMusic,
+  Pause,
   Play,
   ShieldCheck,
+  SkipForward,
   Shuffle,
   Smartphone,
   X,
@@ -80,10 +83,77 @@ const IS_NOT_LIST = [
   "A social network for sharing someone else's music",
 ]
 
+type SoundEffect = {
+  audio: string
+  title: string
+}
+
 export function LandingPage() {
   const { user } = useAuth()
+  const [soundEffects, setSoundEffects] = useState<SoundEffect[]>([])
+  const [activeSoundEffect, setActiveSoundEffect] = useState<SoundEffect | null>(null)
+  const [isSoundEffectPlaying, setIsSoundEffectPlaying] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   const primaryTo = user ? "/dashboard" : "/register"
   const primaryLabel = user ? "Open your library" : "Create your library"
+
+  useEffect(() => {
+    let isMounted = true
+
+    fetch("/sfx/map.json")
+      .then((response) => response.json() as Promise<SoundEffect[]>)
+      .then((sounds) => {
+        if (isMounted) setSoundEffects(sounds)
+      })
+      .catch(() => undefined)
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const playRandomSoundEffect = () => {
+    if (soundEffects.length === 0) return
+
+    const currentIndex = activeSoundEffect ? soundEffects.indexOf(activeSoundEffect) : -1
+    let nextIndex = Math.floor(Math.random() * soundEffects.length)
+
+    if (soundEffects.length > 1 && nextIndex === currentIndex) {
+      nextIndex = (nextIndex + 1) % soundEffects.length
+    }
+
+    const nextSoundEffect = soundEffects[nextIndex]
+    const audio = audioRef.current ?? new Audio()
+    audioRef.current = audio
+    audio.src = `/sfx/${nextSoundEffect.audio}`
+    audio.onended = () => setIsSoundEffectPlaying(false)
+    audio.onerror = () => setIsSoundEffectPlaying(false)
+    audio.currentTime = 0
+    setActiveSoundEffect(nextSoundEffect)
+
+    void audio.play().then(
+      () => setIsSoundEffectPlaying(true),
+      () => setIsSoundEffectPlaying(false),
+    )
+  }
+
+  const handlePlayButtonClick = () => {
+    if (isSoundEffectPlaying) {
+      audioRef.current?.pause()
+      setIsSoundEffectPlaying(false)
+      return
+    }
+
+    if (audioRef.current && activeSoundEffect && !audioRef.current.ended) {
+      void audioRef.current.play().then(
+        () => setIsSoundEffectPlaying(true),
+        () => setIsSoundEffectPlaying(false),
+      )
+      return
+    }
+
+    playRandomSoundEffect()
+  }
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-12">
@@ -131,8 +201,31 @@ export function LandingPage() {
               </div>
             </div>
             <div className="flex items-center justify-between border-t border-background/15 pt-4 text-sm text-background/60">
-              <span>Sonetopia</span>
-              <Play className="size-4 fill-current text-primary" />
+              <span>{activeSoundEffect?.title ?? "Sonetopia"}</span>
+              <div className="flex items-center gap-3">
+                {isSoundEffectPlaying && (
+                  <button
+                    type="button"
+                    className="cursor-default text-background/60 transition-colors hover:text-background"
+                    aria-label="Skip audio"
+                    onClick={playRandomSoundEffect}
+                  >
+                    <SkipForward className="size-4 fill-current" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="cursor-default text-primary"
+                  aria-label={isSoundEffectPlaying ? "Pause audio" : "Play a random audio"}
+                  onClick={handlePlayButtonClick}
+                >
+                  {isSoundEffectPlaying ? (
+                    <Pause className="size-4 fill-current" />
+                  ) : (
+                    <Play className="size-4 fill-current" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
