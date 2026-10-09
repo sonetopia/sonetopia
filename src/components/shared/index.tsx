@@ -4,6 +4,7 @@ import { cn } from "cn"
 import { AudioLines, Pause, Play, type LucideIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { AUDIO_KINDS, type AudioKind, type Track } from "@/lib/library"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 export function Brand({
   subtitle = "Your sound, everywhere.",
@@ -19,7 +20,9 @@ export function Brand({
       </span>
       <span className="leading-tight">
         <span className="block font-heading text-sm font-semibold">Sonetopia</span>
-        <span className="block text-[11px] text-muted-foreground">{subtitle}</span>
+        {!useIsMobile() && (
+          <span className="block text-[11px] text-muted-foreground">{subtitle}</span>
+        )}
       </span>
     </Link>
   )

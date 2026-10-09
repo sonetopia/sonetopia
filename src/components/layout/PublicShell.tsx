@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Brand } from "@/components/shared"
 import { useAuth } from "@/lib/auth"
 import { useTheme } from "@/lib/theme"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { cn } from "@/lib/utils"
 
 export function PublicShell() {
   const { user } = useAuth()
@@ -32,7 +34,10 @@ export function PublicShell() {
                 <Button className="py-4" variant="ghost" render={<Link to="/login" />}>
                   Sign in
                 </Button>
-                <Button className="px-5 py-4" render={<Link to="/register" />}>
+                <Button className={cn(
+                  "py-4",
+                  useIsMobile() ? "" : "px-4"
+                )} render={<Link to="/register" />}>
                   Get started
                 </Button>
               </>

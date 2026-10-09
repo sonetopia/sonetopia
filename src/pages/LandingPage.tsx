@@ -19,6 +19,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
   {
@@ -159,8 +160,8 @@ export function LandingPage() {
     <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-12">
       <section className="grid min-h-[min(680px,calc(100svh-9rem))] items-center gap-12 border-b pb-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-20">
         <div className="space-y-8">
-          <p className="text-xs font-medium uppercase tracking-[0.24em] text-primary">Private audio library</p>
-          <h1 className="font-heading max-w-3xl text-5xl font-semibold leading-[0.98] tracking-[-0.04em] sm:text-7xl">
+          <p className="text-xs font-medium uppercase tracking-[0.24em] text-primary">{useIsMobile() ? "Your sound, everywhere." : "Private audio library"}</p>
+          <h1 className="font-heading max-w-3xl text-5xl -ms-1 font-semibold leading-[0.98] tracking-[-0.04em] sm:text-7xl">
             Keep listening. Keep your space.
           </h1>
           <p className="max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
