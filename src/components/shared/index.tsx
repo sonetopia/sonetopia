@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { AUDIO_KINDS, type AudioKind, type Track } from "@/lib/library"
 
 export function Brand({
-  subtitle = "Private audio library",
+  subtitle = "Your sound, everywhere.",
   className,
 }: {
   subtitle?: string

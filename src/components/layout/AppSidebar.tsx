@@ -62,7 +62,7 @@ export function AppSidebar() {
               <span className="grid flex-1 text-left leading-tight">
                 <span className="truncate font-heading text-sm font-semibold">Sonetopia</span>
                 <span className="truncate text-[11px] text-muted-foreground">
-                  Private audio library
+                  Your sound, everywhere.
                 </span>
               </span>
             </SidebarMenuButton>
