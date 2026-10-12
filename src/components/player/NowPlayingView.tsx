@@ -128,7 +128,7 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
                 size="icon-sm"
                 aria-label="Shuffle"
                 aria-pressed={shuffle}
-                className={cn(shuffle && "text-primary")}
+                className={cn(shuffle && "text-primary aria-pressed:hover:text-primary")}
                 onClick={toggleShuffle}
               >
                 <Shuffle className="size-5" />
@@ -152,7 +152,7 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
                 size="icon-sm"
                 aria-label={`Repeat: ${REPEAT_LABEL[repeat]}`}
                 aria-pressed={repeat !== "off"}
-                className={cn(repeat !== "off" && "text-primary")}
+                className={cn(repeat !== "off" && "text-primary aria-pressed:hover:text-primary")}
                 onClick={cycleRepeat}
               >
                 {repeat === "one" ? <Repeat1 className="size-5" /> : <Repeat className="size-5" />}
