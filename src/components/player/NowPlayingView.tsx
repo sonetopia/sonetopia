@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
+import { SeekSlider } from "@/components/player/SeekSlider"
 import { AudioCover, CoverPlayButton } from "@/components/shared"
 import { QueueTrackActions } from "@/components/queue/QueueTrackActions"
 import { usePlayer } from "@/components/player/PlayerProvider"
@@ -104,20 +105,16 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
             </div>
 
             <div className="w-full max-w-lg space-y-1.5">
-              <Slider
+              <SeekSlider
                 className="w-full"
                 aria-label="Playback position"
-                min={0}
-                max={Math.max(duration, 1)}
-                step={1}
+                max={duration}
                 value={scrub ?? position}
-                onValueChange={(value) => {
-                  const next = value as number
+                onValueChange={(next) => {
                   setScrub(next)
                   seek(next)
                 }}
                 onValueCommitted={() => setScrub(null)}
-                onPointerUp={() => setScrub(null)}
               />
               <div className="flex justify-between text-[11px] tabular-nums text-muted-foreground">
                 <span>{timeLabel(scrub ?? position)}</span>
