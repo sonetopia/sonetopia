@@ -11,10 +11,9 @@ export function QueuePage() {
   const { queue, current, currentIndex, jumpTo, clearQueue } = usePlayer()
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <PageHeader
         title="Queue"
-        description="What plays next, in order. Drag-free reordering with the row menu."
       >
         {queue.length > 0 ? (
           <Button variant="outline" onClick={clearQueue}>
@@ -37,7 +36,7 @@ export function QueuePage() {
         onPlay={(_, index) => jumpTo(index)}
         showTags={false}
         emptyTitle="Your queue is empty"
-        emptyDescription="Pick something from your library or a playlist to start listening."
+        emptyDescription="Pick something to start listening."
         emptyAction={
           <Button variant="outline" render={<Link to="/library" />}>
             <ListMusic />

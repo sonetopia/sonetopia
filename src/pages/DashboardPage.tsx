@@ -26,7 +26,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <SectionHeader title="Your playlists" description="Scroll sideways when the list grows">
+        <SectionHeader title="Your playlists">
           <Button variant="ghost" size="sm" render={<Link to="/library" />}>
             Explore library
             <ArrowRight />

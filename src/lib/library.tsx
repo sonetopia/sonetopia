@@ -16,6 +16,17 @@ import {
   Waves,
   type LucideIcon,
 } from "lucide-react"
+import {
+  createAudio,
+  deleteAudio,
+  getAudio,
+  getAudioCover,
+  listAudio,
+  mediaUrl,
+  updateAudio,
+  type AudioResponse,
+  type UpdateAudioInput,
+} from "@/api/audio"
 import { loadJSON, saveJSON } from "@/lib/persist"
 
 export type AudioKind =
@@ -30,13 +41,13 @@ export type Track = {
   id: string
   title: string
   artist: string
+  album: string
   kind: AudioKind
   src: string
   duration: number
   tags: string[]
   addedAt: string
   coverUrl?: string
-  origin: "demo" | "upload"
 }
 
 export type Playlist = {
@@ -87,10 +98,15 @@ export const KIND_OPTIONS = Object.entries(AUDIO_KINDS).map(([value, meta]) => (
   label: meta.label,
 }))
 
+/** `m:ss`, or `h:mm:ss` once the duration passes 59 minutes. */
 export function formatDuration(seconds?: number) {
   if (!seconds || !Number.isFinite(seconds) || seconds <= 0) return "--:--"
   const total = Math.round(seconds)
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const secs = String(total % 60).padStart(2, "0")
+  if (hours > 0) return `${hours}:${String(minutes).padStart(2, "0")}:${secs}`
+  return `${minutes}:${secs}`
 }
 
 export function formatTotalDuration(tracks: Track[]) {
@@ -100,185 +116,63 @@ export function formatTotalDuration(tracks: Track[]) {
 }
 
 export function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", {
+  return new Date(iso).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
   })
 }
 
-const sample = (n: number) =>
-  `https://www.soundhelix.com/examples/mp3/SoundHelix-Song-${n}.mp3`
-const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString()
+const AUDIO_KIND_VALUES = Object.keys(AUDIO_KINDS) as AudioKind[]
 
-// ponytail: demo tracks point at public sample audio so the player is usable before the Spring API exists
-export const SEED_TRACKS: Track[] = [
-  {
-    id: "demo-1",
-    title: "Lofi Sunrise",
-    artist: "Evening Collective",
-    kind: "music",
-    src: sample(1),
-    duration: 372,
-    tags: ["lofi", "chill"],
-    addedAt: daysAgo(1),
-    origin: "demo",
-  },
-  {
-    id: "demo-2",
-    title: "Deep Focus (Instrumental)",
-    artist: "Studio Anonymous",
-    kind: "instrumental",
-    src: sample(2),
-    duration: 425,
-    tags: ["focus", "work"],
-    addedAt: daysAgo(2),
-    origin: "demo",
-  },
-  {
-    id: "demo-3",
-    title: "Episode 01 — Building Small Habits",
-    artist: "Sonetopia Podcast",
-    kind: "podcast",
-    src: sample(3),
-    duration: 1840,
-    tags: ["productivity"],
-    addedAt: daysAgo(3),
-    origin: "demo",
-  },
-  {
-    id: "demo-4",
-    title: "Rain on a Tin Roof",
-    artist: "Ambience Lab",
-    kind: "ambience",
-    src: sample(4),
-    duration: 2400,
-    tags: ["sleep", "rain"],
-    addedAt: daysAgo(4),
-    origin: "demo",
-  },
-  {
-    id: "demo-5",
-    title: "Nocturne in E-flat",
-    artist: "F. Chopin",
-    kind: "instrumental",
-    src: sample(5),
-    duration: 268,
-    tags: ["classical", "piano"],
-    addedAt: daysAgo(6),
-    origin: "demo",
-  },
-  {
-    id: "demo-6",
-    title: "White Noise — Desk Fan",
-    artist: "Ambience Lab",
-    kind: "ambience",
-    src: sample(6),
-    duration: 3600,
-    tags: ["white noise", "sleep"],
-    addedAt: daysAgo(8),
-    origin: "demo",
-  },
-  {
-    id: "demo-7",
-    title: "Chapter 1 — The Journey Begins",
-    artist: "Spoken Books",
-    kind: "audiobook",
-    src: sample(7),
-    duration: 1500,
-    tags: ["novel"],
-    addedAt: daysAgo(12),
-    origin: "demo",
-  },
-  {
-    id: "demo-8",
-    title: "Neon Drive",
-    artist: "Retro Kid",
-    kind: "music",
-    src: sample(8),
-    duration: 310,
-    tags: ["synthwave", "driving"],
-    addedAt: daysAgo(15),
-    origin: "demo",
-  },
-  {
-    id: "demo-9",
-    title: "Ocean Waves — Gentle Surf",
-    artist: "Ambience Lab",
-    kind: "ambience",
-    src: sample(9),
-    duration: 3600,
-    tags: ["white noise", "sleep"],
-    addedAt: daysAgo(8),
-    origin: "demo",
-  },
-  {
-    id: "demo-10",
-    title: "Chapter 2 — The Journey Begins",
-    artist: "Spoken Books",
-    kind: "audiobook",
-    src: sample(10),
-    duration: 1500,
-    tags: ["novel"],
-    addedAt: daysAgo(12),
-    origin: "demo",
-  },
-  {
-    id: "demo-11",
-    title: "Neon Drive (Extended Mix)",
-    artist: "Retro Kid",
-    kind: "music",
-    src: sample(11),
-    duration: 310,
-    tags: ["synthwave", "driving"],
-    addedAt: daysAgo(15),
-    origin: "demo",
-  },
-]
+function toAudioKind(type: string | null | undefined): AudioKind {
+  const normalised = type?.trim().toLowerCase()
+  return AUDIO_KIND_VALUES.find((kind) => kind === normalised) ?? "other"
+}
 
-export const SEED_PLAYLISTS: Playlist[] = [
-  {
-    id: "pl-focus",
-    name: "Deep Work",
-    trackIds: ["demo-2", "demo-1", "demo-8"],
-    createdAt: daysAgo(10),
-  },
-  {
-    id: "pl-sleep",
-    name: "Sleep Tight",
-    trackIds: ["demo-4", "demo-6"],
-    createdAt: daysAgo(7),
-  },
-  {
-    id: "pl-podcast",
-    name: "Morning Podcast",
-    trackIds: ["demo-3"],
-    createdAt: daysAgo(3),
-  },
-  {
-    id: "pl-audiobook",
-    name: "Audiobook Adventures",
-    trackIds: ["demo-7"],
-    createdAt: daysAgo(12),
-  },
-]
+async function trackFromDetail(audio: AudioResponse): Promise<Track> {
+  const cover =
+    (audio.coverVersion ?? 0) > 0 ? await getAudioCover(audio.id).catch(() => null) : null
+  return {
+    id: audio.id,
+    title: audio.title,
+    artist: audio.author?.trim() || "Unknown artist",
+    album: audio.album?.trim() ?? "",
+    kind: toAudioKind(audio.type),
+    src: mediaUrl(audio.signedUrl) ?? "",
+    duration: audio.duration ?? 0,
+    tags: [],
+    addedAt: audio.createdAt,
+    coverUrl: mediaUrl(cover?.signedUrl),
+  }
+}
+
+async function hydrateTrack(item: AudioResponse): Promise<Track> {
+  const detail = await getAudio(item.id).catch(() => null)
+  return trackFromDetail(detail ?? item)
+}
 
 export type UploadInput = {
   file: File
   title: string
   artist: string
   kind: AudioKind
-  tags: string[]
+  album?: string
+  year?: number
+  cover?: File
 }
 
 type LibraryValue = {
   tracks: Track[]
   playlists: Playlist[]
+  loading: boolean
+  error: string | null
   trackById: (id: string) => Track | undefined
   tracksByIds: (ids: string[]) => Track[]
-  addUploads: (inputs: UploadInput[]) => number
-  removeTrack: (id: string) => void
+  addUploads: (inputs: UploadInput[]) => Promise<number>
+  removeTrack: (id: string) => Promise<void>
   setTrackDuration: (id: string, duration: number) => void
+  updateTrack: (id: string, input: UpdateAudioInput) => Promise<void>
   createPlaylist: (input: { name: string }) => Playlist
   updatePlaylist: (id: string, patch: { name?: string }) => void
   deletePlaylist: (id: string) => void
@@ -291,38 +185,67 @@ const LibraryContext = createContext<LibraryValue | null>(null)
 const PLAYLIST_KEY = "sonetopia:playlists"
 
 export function LibraryProvider({ children }: { children: ReactNode }) {
-  const [tracks, setTracks] = useState<Track[]>(SEED_TRACKS)
+  const [tracks, setTracks] = useState<Track[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [playlists, setPlaylists] = useState<Playlist[]>(() => {
     const stored = loadJSON<Playlist[] | null>(PLAYLIST_KEY, null)
-    return stored?.length ? stored : SEED_PLAYLISTS
+    return stored ?? []
   })
 
   useEffect(() => saveJSON(PLAYLIST_KEY, playlists), [playlists])
 
-  // ponytail: uploads live in memory (blob URLs) until the Spring API can store files
-  const addUploads = useCallback((inputs: UploadInput[]) => {
-    const now = new Date()
-    const created: Track[] = inputs.map((input, index) => ({
-      id: `up-${now.getTime()}-${index}`,
-      title: input.title.trim() || input.file.name,
-      artist: input.artist.trim() || "Unknown artist",
-      kind: input.kind,
-      src: URL.createObjectURL(input.file),
-      duration: 0,
-      tags: input.tags,
-      addedAt: now.toISOString(),
-      origin: "upload",
-    }))
-    setTracks((prev) => [...created, ...prev])
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    listAudio()
+      .then((items) => Promise.all(items.map(hydrateTrack)))
+      .then((apiTracks) => {
+        if (cancelled) return
+        setTracks(apiTracks)
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : "Failed to load your library")
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const addUploads = useCallback(async (inputs: UploadInput[]) => {
+    const created: Track[] = []
+    const failures: string[] = []
+    for (const input of inputs) {
+      try {
+        const audio = await createAudio({
+          file: input.file,
+          title: input.title.trim() || input.file.name,
+          type: input.kind,
+          author: input.artist.trim() || undefined,
+          album: input.album?.trim() || undefined,
+          year: input.year,
+          cover: input.cover,
+        })
+        const track = await trackFromDetail(await getAudio(audio.id))
+        created.push(track)
+        setTracks((prev) => [track, ...prev])
+      } catch (cause) {
+        failures.push(`${input.title}: ${cause instanceof Error ? cause.message : "upload failed"}`)
+      }
+    }
+    if (failures.length > 0) throw new Error(failures.join("; "))
     return created.length
   }, [])
 
-  const removeTrack = useCallback((id: string) => {
-    setTracks((prev) => {
-      const target = prev.find((track) => track.id === id)
-      if (target?.origin === "upload") URL.revokeObjectURL(target.src)
-      return prev.filter((track) => track.id !== id)
-    })
+  const removeTrack = useCallback(async (id: string) => {
+    await deleteAudio(id)
+    setTracks((prev) => prev.filter((track) => track.id !== id))
     setPlaylists((prev) =>
       prev.map((playlist) =>
         playlist.trackIds.includes(id)
@@ -335,6 +258,16 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const setTrackDuration = useCallback((id: string, duration: number) => {
     setTracks((prev) =>
       prev.map((track) => (track.id === id ? { ...track, duration } : track))
+    )
+  }, [])
+
+  const updateTrack = useCallback(async (id: string, input: UpdateAudioInput) => {
+    await updateAudio(id, input)
+    const updated = await trackFromDetail(await getAudio(id))
+    setTracks((prev) =>
+      prev.map((track) =>
+        track.id === id ? { ...updated, duration: updated.duration || track.duration } : track
+      )
     )
   }, [])
 
@@ -407,11 +340,14 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     () => ({
       tracks,
       playlists,
+      loading,
+      error,
       trackById,
       tracksByIds,
       addUploads,
       removeTrack,
       setTrackDuration,
+      updateTrack,
       createPlaylist,
       updatePlaylist,
       deletePlaylist,
@@ -422,11 +358,14 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     [
       tracks,
       playlists,
+      loading,
+      error,
       trackById,
       tracksByIds,
       addUploads,
       removeTrack,
       setTrackDuration,
+      updateTrack,
       createPlaylist,
       updatePlaylist,
       deletePlaylist,

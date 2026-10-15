@@ -1,4 +1,5 @@
-import { ListMusic, ListPlus, MoreHorizontal, Trash2 } from "lucide-react"
+import { useState } from "react"
+import { Info, ListMusic, ListPlus, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -12,19 +13,26 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { usePlayer } from "@/components/player/PlayerProvider"
 import { useLibrary, type Track } from "@/lib/library"
+import { EditAudioDialog } from "@/components/track/EditAudioDialog"
+import { TrackDetailsDialog } from "@/components/track/TrackDetailsDialog"
+import { TrackDeleteDialog } from "@/components/track/TrackDeleteDialog"
 
 export function TrackActions({ track }: { track: Track }) {
-  const { playlists, addTrackToPlaylist, removeTrack } = useLibrary()
+  const { playlists, addTrackToPlaylist } = useLibrary()
   const { enqueueNext, addToQueue } = usePlayer()
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
 
   return (
-    <DropdownMenu>
+    <>
+      <DropdownMenu>
       <DropdownMenuTrigger
         render={<Button variant="ghost" size="icon-sm" aria-label={`Actions for ${track.title}`} />}
       >
         <MoreHorizontal />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-50" align="end">
+      <DropdownMenuContent className="w-40" align="end">
         <DropdownMenuItem onClick={() => enqueueNext(track)}>
           <ListPlus />
           Play next
@@ -52,12 +60,24 @@ export function TrackActions({ track }: { track: Track }) {
             </DropdownMenuSubContent>
           </DropdownMenuSub>
         ) : null}
+        <DropdownMenuItem onClick={() => setDetailsOpen(true)}>
+          <Info />
+          Show details
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setEditOpen(true)}>
+          <Pencil />
+          Edit
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onClick={() => removeTrack(track.id)}>
+        <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
           <Trash2 />
-          Remove from library
+          Delete
         </DropdownMenuItem>
       </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenu>
+      <TrackDetailsDialog track={track} open={detailsOpen} onOpenChange={setDetailsOpen} />
+      <TrackDeleteDialog track={track} open={deleteOpen} onOpenChange={setDeleteOpen} />
+      <EditAudioDialog track={track} open={editOpen} onOpenChange={setEditOpen} />
+    </>
   )
 }

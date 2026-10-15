@@ -35,6 +35,8 @@ export function PlayerBar() {
     volume,
     repeat,
     shuffle,
+    nowPlayingOpen,
+    setNowPlayingOpen,
     toggle,
     next,
     previous,
@@ -46,7 +48,6 @@ export function PlayerBar() {
   const isMobile = useIsMobile(640)
   const barRef = useRef<HTMLDivElement>(null)
   const [scrub, setScrub] = useState<number | null>(null)
-  const [expanded, setExpanded] = useState(false)
 
   // publish the real bar height so the sidebar and page padding can stay clear of it
   useEffect(() => {
@@ -105,7 +106,7 @@ export function PlayerBar() {
 
           <button
             type="button"
-            onClick={() => setExpanded(true)}
+            onClick={() => setNowPlayingOpen(true)}
             aria-label="Open full player"
             className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-lg px-1 py-1.5 sm:justify-center sm:px-2"
           >
@@ -164,7 +165,7 @@ export function PlayerBar() {
                 variant="ghost"
                 size="icon-lg"
                 aria-label="Open full player"
-                onClick={() => setExpanded(true)}
+                onClick={() => setNowPlayingOpen(true)}
               >
                 <Maximize2 className="size-5" />
               </Button>
@@ -173,7 +174,7 @@ export function PlayerBar() {
         </div>
       </div>
 
-      <NowPlayingView open={expanded} onOpenChange={setExpanded} />
+      <NowPlayingView open={nowPlayingOpen} onOpenChange={setNowPlayingOpen} />
     </>
   )
 }

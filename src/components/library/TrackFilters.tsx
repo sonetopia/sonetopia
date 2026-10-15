@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -48,7 +49,7 @@ export function TrackFilters({
         <Input
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Search title, artist, or tag"
+          placeholder="Search title, artist, or album"
           aria-label="Search audio"
           className="pl-8"
         />
@@ -56,7 +57,7 @@ export function TrackFilters({
           <Button
             variant="ghost"
             size="icon-xs"
-            className="absolute top-1/2 right-1.5 -translate-y-1/2"
+            className="absolute inset-y-0 right-1.5 z-10 my-auto"
             aria-label="Clear search"
             onClick={() => onQueryChange("")}
           >
@@ -74,11 +75,13 @@ export function TrackFilters({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {KIND_ITEMS.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
-              {item.label}
-            </SelectItem>
-          ))}
+          <SelectGroup>
+            {KIND_ITEMS.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
         </SelectContent>
       </Select>
 
@@ -91,11 +94,13 @@ export function TrackFilters({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {SORT_ITEMS.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
-              {item.label}
-            </SelectItem>
-          ))}
+          <SelectGroup>
+            {SORT_ITEMS.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
         </SelectContent>
       </Select>
 

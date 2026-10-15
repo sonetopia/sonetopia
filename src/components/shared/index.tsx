@@ -178,7 +178,7 @@ export function EmptyState({
       <div className="space-y-1">
         <p className="text-sm font-medium">{title}</p>
         {description ? (
-          <p className="mx-auto max-w-sm text-xs text-muted-foreground">{description}</p>
+          <p className="mx-auto max-w-sm text-xs text-muted-foreground mt-3 mb-1">{description}</p>
         ) : null}
       </div>
       {action}

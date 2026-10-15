@@ -3,13 +3,14 @@ import { cn } from "cn"
 import { AudioLines } from "lucide-react"
 import { CoverPlayButton, EmptyState, KindBadge } from "@/components/shared"
 import { usePlayer } from "@/components/player/PlayerProvider"
-import { formatDate, formatDuration, type Track } from "@/lib/library"
+import { formatDuration, type Track } from "@/lib/library"
 
 type TrackListProps = {
   tracks: Track[]
   onPlay: (track: Track, index: number) => void
+  /** When provided, artist and album names become buttons that search for them. */
+  onSearch?: (value: string) => void
   rowActions?: (track: Track, index: number) => ReactNode
-  showAddedAt?: boolean
   showTags?: boolean
   emptyTitle?: string
   emptyDescription?: string
@@ -17,11 +18,26 @@ type TrackListProps = {
   className?: string
 }
 
+/** Artist / album text: a search shortcut when the list is searchable. */
+function MetaValue({ value, onSearch }: { value: string; onSearch?: (value: string) => void }) {
+  if (!onSearch) return <span className="min-w-0 truncate">{value}</span>
+  return (
+    <button
+      type="button"
+      onClick={() => onSearch(value)}
+      title={`Search ${value}`}
+      className="min-w-0 cursor-pointer truncate hover:text-foreground hover:underline focus-visible:text-foreground focus-visible:underline"
+    >
+      {value}
+    </button>
+  )
+}
+
 export function TrackList({
   tracks,
   onPlay,
+  onSearch,
   rowActions,
-  showAddedAt = false,
   showTags = true,
   emptyTitle = "Nothing here yet",
   emptyDescription,
@@ -45,6 +61,7 @@ export function TrackList({
     <ul className={cn("flex flex-col gap-1", className)}>
       {tracks.map((track, index) => {
         const active = current?.id === track.id
+        const playing = active && isPlaying
         return (
           <li
             key={`${track.id}-${index}`}
@@ -55,18 +72,39 @@ export function TrackList({
           >
             <CoverPlayButton
               track={track}
-              playing={active && isPlaying}
+              playing={playing}
               onToggle={() => (active ? toggle() : onPlay(track, index))}
               className="size-9"
             />
             <div className="min-w-0 flex-1">
-              <p className={cn("truncate text-sm font-medium", active && "text-primary")}>
-                {track.title}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                {track.artist}
-                {showAddedAt ? ` · ${formatDate(track.addedAt)}` : ""}
-              </p>
+              <div className="flex min-w-0 flex-col gap-[2px]">
+                <button
+                  type="button"
+                  onClick={() => (active ? toggle() : onPlay(track, index))}
+                  title={playing ? `Pause ${track.title}` : `Play ${track.title}`}
+                  className={cn(
+                    "block w-full min-w-0 cursor-pointer truncate text-left text-sm font-medium hover:underline focus-visible:underline",
+                    active && "text-primary"
+                  )}
+                >
+                  {track.title}
+                </button>
+                <p className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground">
+                  {track.artist ? (
+                    <MetaValue value={track.artist} onSearch={onSearch} />
+                  ) : (
+                    <span className="min-w-0 truncate">Unknown artist</span>
+                  )}
+                  {track.album ? (
+                    <>
+                      <span aria-hidden="true" className="shrink-0">
+                        ·
+                      </span>
+                      <MetaValue value={track.album} onSearch={onSearch} />
+                    </>
+                  ) : null}
+                </p>
+              </div>
             </div>
             {showTags && track.tags[0] ? (
               <span className="hidden text-xs text-muted-foreground lg:inline">
@@ -74,7 +112,7 @@ export function TrackList({
               </span>
             ) : null}
             <KindBadge kind={track.kind} className="hidden sm:inline-flex" />
-            <span className="w-12 text-right text-xs tabular-nums text-muted-foreground">
+            <span className="w-14 text-right text-xs tabular-nums text-muted-foreground">
               {formatDuration(track.duration)}
             </span>
             {rowActions ? <div className="flex items-center">{rowActions(track, index)}</div> : null}

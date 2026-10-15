@@ -10,7 +10,7 @@ import { usePlayer } from "@/components/player/PlayerProvider"
 import { useLibrary } from "@/lib/library"
 
 export function LibraryPage() {
-  const { tracks } = useLibrary()
+  const { tracks, loading, error } = useLibrary()
   const { playTracks } = usePlayer()
   const [query, setQuery] = useState("")
   const [kind, setKind] = useState<KindFilter>("all")
@@ -21,7 +21,7 @@ export function LibraryPage() {
     const result = tracks.filter((track) => {
       if (kind !== "all" && track.kind !== kind) return false
       if (!keyword) return true
-      return [track.title, track.artist, ...track.tags].some((value) =>
+      return [track.title, track.artist, track.album].some((value) =>
         value.toLowerCase().includes(keyword)
       )
     })
@@ -46,10 +46,9 @@ export function LibraryPage() {
   )
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <PageHeader
-        title="Audio"
-        description="Everything you have stored: music, podcasts, instrumentals, ambience, and more."
+        title="Library"
       >
         {uploadButton}
       </PageHeader>
@@ -66,12 +65,12 @@ export function LibraryPage() {
 
       <TrackList
         tracks={filtered}
-        showAddedAt
         onPlay={(_, index) => playTracks(filtered, index)}
+        onSearch={setQuery}
         rowActions={(track) => <TrackActions track={track} />}
-        emptyTitle="No matching audio"
-        emptyDescription="Try a different keyword or clear the filters."
-        emptyAction={tracks.length === 0 ? uploadButton : null}
+        emptyTitle={loading ? "Loading audio" : error ? "Could not load your library" : "No matching audio"}
+        emptyDescription={loading ? "Fetching tracks from the server." : (error ?? "Try a different keyword or clear the filters.")}
+        emptyAction={loading ? null : tracks.length === 0 ? uploadButton : null}
       />
     </div>
   )

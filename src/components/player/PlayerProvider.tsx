@@ -31,6 +31,8 @@ type PlayerValue = {
   volume: number
   repeat: RepeatMode
   shuffle: boolean
+  nowPlayingOpen: boolean
+  setNowPlayingOpen: (open: boolean) => void
   playTrack: (track: Track) => void
   playTracks: (tracks: Track[], startIndex?: number) => void
   toggle: () => void
@@ -64,6 +66,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [position, setPosition] = useState(0)
   const [duration, setDuration] = useState(0)
   const [shuffleOrder, setShuffleOrder] = useState<number[]>([])
+  const [nowPlayingOpen, setNowPlayingOpen] = useState(false)
 
   const { volume, repeat, shuffle } = prefs
   const current = currentIndex >= 0 ? queue[currentIndex] : undefined
@@ -87,12 +90,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const playTracks = useCallback(
     (tracks: Track[], startIndex = 0) => {
       if (tracks.length === 0) return
+      // surface the full player when playback starts from an empty state
+      if (currentIndex < 0) setNowPlayingOpen(true)
       setQueue(tracks)
       setCurrentIndex(startIndex)
       setIsPlaying(true)
       if (shuffle) setShuffleOrder(shuffledOrder(tracks.length, startIndex))
     },
-    [shuffle]
+    [shuffle, currentIndex]
   )
 
   const playTrack = useCallback((track: Track) => playTracks([track], 0), [playTracks])
@@ -280,6 +285,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       volume,
       repeat,
       shuffle,
+      nowPlayingOpen,
+      setNowPlayingOpen,
       playTrack,
       playTracks,
       toggle,
@@ -306,6 +313,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       volume,
       repeat,
       shuffle,
+      nowPlayingOpen,
+      setNowPlayingOpen,
       playTrack,
       playTracks,
       toggle,
