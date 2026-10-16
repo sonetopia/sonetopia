@@ -52,7 +52,7 @@ export function TrackActions({ track }: { track: Track }) {
                 <DropdownMenuItem
                   key={playlist.id}
                   disabled={playlist.trackIds.includes(track.id)}
-                  onClick={() => addTrackToPlaylist(playlist.id, track.id)}
+                  onClick={() => void addTrackToPlaylist(playlist.id, track.id).catch(console.error)}
                 >
                   {playlist.name}
                 </DropdownMenuItem>

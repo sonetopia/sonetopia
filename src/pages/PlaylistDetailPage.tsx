@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import {
   ArrowDown,
@@ -29,6 +30,7 @@ import {
 } from "@/components/ui/popover"
 import { AudioCover, EmptyState, PageHeader } from "@/components/shared"
 import { TrackList } from "@/components/track/TrackList"
+import { PlaylistDeleteDialog } from "@/components/playlist/PlaylistDeleteDialog"
 import { PlaylistForm } from "@/components/playlist/PlaylistForm"
 import { usePlayer } from "@/components/player/PlayerProvider"
 import { formatTotalDuration, useLibrary, type Track } from "@/lib/library"
@@ -38,20 +40,22 @@ const randomStartIndex = (length: number) => Math.floor(Math.random() * length)
 function AddTrackPopover({
   playlistId,
   excludedIds,
+  className,
 }: {
   playlistId: string
   excludedIds: string[]
+  className?: string
 }) {
   const { tracks, addTrackToPlaylist } = useLibrary()
   const available = tracks.filter((track) => !excludedIds.includes(track.id))
 
   return (
     <Popover>
-      <PopoverTrigger render={<Button variant="outline" size="sm" />}>
+      <PopoverTrigger render={<Button variant="outline" size="sm" className={className} />}>
         <Plus />
         Add audio
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80">
+      <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)]">
         <PopoverHeader>
           <PopoverTitle>Add to playlist</PopoverTitle>
           <PopoverDescription>Pick tracks from your library.</PopoverDescription>
@@ -66,7 +70,7 @@ function AddTrackPopover({
               <button
                 key={track.id}
                 type="button"
-                onClick={() => addTrackToPlaylist(playlistId, track.id)}
+                onClick={() => void addTrackToPlaylist(playlistId, track.id).catch(console.error)}
                 className="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left text-sm hover:bg-accent"
               >
                 <AudioCover track={track} className="size-8" />
@@ -86,17 +90,28 @@ export function PlaylistDetailPage() {
   const navigate = useNavigate()
   const {
     playlists,
+    loading,
     tracksByIds,
     removeTrackFromPlaylist,
     movePlaylistTrack,
     updatePlaylist,
-    deletePlaylist,
   } = useLibrary()
   const { playTracks, enqueueNext, shuffle, toggleShuffle } = usePlayer()
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   const playlist = playlists.find((item) => item.id === id)
 
   if (!playlist) {
+    if (loading) {
+      return (
+        <EmptyState
+          icon={ListMusic}
+          title="Loading playlist"
+          description="Fetching your playlists from the server."
+        />
+      )
+    }
+
     return (
       <EmptyState
         icon={ListMusic}
@@ -132,34 +147,32 @@ export function PlaylistDetailPage() {
             </Button>
           }
         />
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            deletePlaylist(playlist.id)
-            navigate("/playlists")
-          }}
-        >
+        <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
           <Trash2 />
           Delete
         </Button>
       </PageHeader>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3">
-        <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
-          <ListMusic className="size-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">
-            {playlistTracks.length} tracks · {formatTotalDuration(playlistTracks)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Created {new Date(playlist.createdAt).toLocaleDateString("en-US")}
-          </p>
+      <div className="flex flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 items-center gap-3 sm:flex-1">
+          <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
+            <ListMusic className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">
+              {playlistTracks.length} tracks · {formatTotalDuration(playlistTracks)}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              Created {new Date(playlist.createdAt).toLocaleDateString("en-US")}
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+
+        {/* stacked on phones so the counts never collide with the actions */}
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0 sm:items-center">
           <Button
             size="sm"
+            className="w-full sm:w-auto"
             disabled={playlistTracks.length === 0}
             onClick={() => playTracks(playlistTracks, 0)}
           >
@@ -169,13 +182,18 @@ export function PlaylistDetailPage() {
           <Button
             size="sm"
             variant="outline"
+            className="w-full sm:w-auto"
             disabled={playlistTracks.length === 0}
             onClick={playFromRandomStart}
           >
             <Shuffle />
             Shuffle
           </Button>
-          <AddTrackPopover playlistId={playlist.id} excludedIds={playlist.trackIds} />
+          <AddTrackPopover
+            playlistId={playlist.id}
+            excludedIds={playlist.trackIds}
+            className="col-span-2 w-full sm:w-auto"
+          />
         </div>
       </div>
 
@@ -193,21 +211,21 @@ export function PlaylistDetailPage() {
             >
               <MoreHorizontal />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-50">
               <DropdownMenuItem onClick={() => enqueueNext(track)}>
                 <ListPlus />
                 Play next
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={index === 0}
-                onClick={() => movePlaylistTrack(playlist.id, index, index - 1)}
+                onClick={() => void movePlaylistTrack(playlist.id, index, index - 1).catch(console.error)}
               >
                 <ArrowUp />
                 Move up
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={index === playlistTracks.length - 1}
-                onClick={() => movePlaylistTrack(playlist.id, index, index + 1)}
+                onClick={() => void movePlaylistTrack(playlist.id, index, index + 1).catch(console.error)}
               >
                 <ArrowDown />
                 Move down
@@ -215,7 +233,7 @@ export function PlaylistDetailPage() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
-                onClick={() => removeTrackFromPlaylist(playlist.id, track.id)}
+                onClick={() => void removeTrackFromPlaylist(playlist.id, track.id).catch(console.error)}
               >
                 <Trash2 />
                 Remove from playlist
@@ -223,6 +241,13 @@ export function PlaylistDetailPage() {
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+      />
+
+      <PlaylistDeleteDialog
+        playlist={playlist}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onDeleted={() => navigate("/dashboard")}
       />
     </div>
   )

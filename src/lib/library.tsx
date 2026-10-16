@@ -20,14 +20,25 @@ import {
   createAudio,
   deleteAudio,
   getAudio,
-  getAudioCover,
   listAudio,
   mediaUrl,
   updateAudio,
   type AudioResponse,
   type UpdateAudioInput,
 } from "@/api/audio"
-import { loadJSON, saveJSON } from "@/lib/persist"
+import { forgetCover, resolveCoverUrl } from "@/lib/covers"
+import {
+  addPlaylistAudio,
+  createPlaylist as createPlaylistRequest,
+  deletePlaylist as deletePlaylistRequest,
+  listPlaylistAudio,
+  listPlaylists,
+  movePlaylistAudio,
+  removePlaylistAudio,
+  updatePlaylist as updatePlaylistRequest,
+  type PlaylistResponse,
+} from "@/api/playlists"
+
 
 export type AudioKind =
   | "music"
@@ -131,8 +142,6 @@ function toAudioKind(type: string | null | undefined): AudioKind {
 }
 
 async function trackFromDetail(audio: AudioResponse): Promise<Track> {
-  const cover =
-    (audio.coverVersion ?? 0) > 0 ? await getAudioCover(audio.id).catch(() => null) : null
   return {
     id: audio.id,
     title: audio.title,
@@ -143,13 +152,22 @@ async function trackFromDetail(audio: AudioResponse): Promise<Track> {
     duration: audio.duration ?? 0,
     tags: [],
     addedAt: audio.createdAt,
-    coverUrl: mediaUrl(cover?.signedUrl),
+    coverUrl: await resolveCoverUrl(audio),
   }
 }
 
 async function hydrateTrack(item: AudioResponse): Promise<Track> {
   const detail = await getAudio(item.id).catch(() => null)
   return trackFromDetail(detail ?? item)
+}
+
+function toPlaylist(row: PlaylistResponse, trackIds: string[]): Playlist {
+  return { id: row.id, name: row.title, trackIds, createdAt: row.createdAt }
+}
+
+async function playlistTrackIds(playlistId: string) {
+  const rows = await listPlaylistAudio(playlistId).catch(() => [])
+  return rows.map((row) => row.audioId)
 }
 
 export type UploadInput = {
@@ -173,39 +191,39 @@ type LibraryValue = {
   removeTrack: (id: string) => Promise<void>
   setTrackDuration: (id: string, duration: number) => void
   updateTrack: (id: string, input: UpdateAudioInput) => Promise<void>
-  createPlaylist: (input: { name: string }) => Playlist
-  updatePlaylist: (id: string, patch: { name?: string }) => void
-  deletePlaylist: (id: string) => void
-  addTrackToPlaylist: (playlistId: string, trackId: string) => void
-  removeTrackFromPlaylist: (playlistId: string, trackId: string) => void
-  movePlaylistTrack: (playlistId: string, from: number, to: number) => void
+  createPlaylist: (input: { name: string }) => Promise<Playlist>
+  updatePlaylist: (id: string, patch: { name?: string }) => Promise<void>
+  deletePlaylist: (id: string) => Promise<void>
+  addTrackToPlaylist: (playlistId: string, trackId: string) => Promise<void>
+  removeTrackFromPlaylist: (playlistId: string, trackId: string) => Promise<void>
+  movePlaylistTrack: (playlistId: string, from: number, to: number) => Promise<void>
 }
 
 const LibraryContext = createContext<LibraryValue | null>(null)
-const PLAYLIST_KEY = "sonetopia:playlists"
 
 export function LibraryProvider({ children }: { children: ReactNode }) {
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [playlists, setPlaylists] = useState<Playlist[]>(() => {
-    const stored = loadJSON<Playlist[] | null>(PLAYLIST_KEY, null)
-    return stored ?? []
-  })
-
-  useEffect(() => saveJSON(PLAYLIST_KEY, playlists), [playlists])
+  const [playlists, setPlaylists] = useState<Playlist[]>([])
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setError(null)
 
-    listAudio()
+    const audio = listAudio()
       .then((items) => Promise.all(items.map(hydrateTrack)))
       .then((apiTracks) => {
         if (cancelled) return
         setTracks(apiTracks)
       })
+
+    const playlistRows = listPlaylists().then(async (rows) => {
+      const memberships = await Promise.all(rows.map((row) => playlistTrackIds(row.id)))
+      if (cancelled) return
+      setPlaylists(rows.map((row, index) => toPlaylist(row, memberships[index])))
+    })
+
+    Promise.all([audio, playlistRows])
       .catch((cause: unknown) => {
         if (!cancelled) setError(cause instanceof Error ? cause.message : "Failed to load your library")
       })
@@ -245,6 +263,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   const removeTrack = useCallback(async (id: string) => {
     await deleteAudio(id)
+    await forgetCover(id)
     setTracks((prev) => prev.filter((track) => track.id !== id))
     setPlaylists((prev) =>
       prev.map((playlist) =>
@@ -271,28 +290,28 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
-  const createPlaylist = useCallback<LibraryValue["createPlaylist"]>((input) => {
-    const playlist: Playlist = {
-      id: `pl-${Date.now()}`,
-      name: input.name.trim(),
-      trackIds: [],
-      createdAt: new Date().toISOString(),
-    }
+  const createPlaylist = useCallback<LibraryValue["createPlaylist"]>(async (input) => {
+    const created = await createPlaylistRequest(input.name.trim())
+    const playlist = toPlaylist(created, [])
     setPlaylists((prev) => [playlist, ...prev])
     return playlist
   }, [])
 
-  const updatePlaylist = useCallback<LibraryValue["updatePlaylist"]>((id, patch) => {
+  const updatePlaylist = useCallback<LibraryValue["updatePlaylist"]>(async (id, patch) => {
+    if (patch.name === undefined) return
+    const updated = await updatePlaylistRequest(id, patch.name.trim())
     setPlaylists((prev) =>
-      prev.map((playlist) => (playlist.id === id ? { ...playlist, ...patch } : playlist))
+      prev.map((playlist) => (playlist.id === id ? { ...playlist, name: updated.title } : playlist))
     )
   }, [])
 
-  const deletePlaylist = useCallback((id: string) => {
+  const deletePlaylist = useCallback(async (id: string) => {
+    await deletePlaylistRequest(id)
     setPlaylists((prev) => prev.filter((playlist) => playlist.id !== id))
   }, [])
 
-  const addTrackToPlaylist = useCallback((playlistId: string, trackId: string) => {
+  const addTrackToPlaylist = useCallback(async (playlistId: string, trackId: string) => {
+    await addPlaylistAudio(playlistId, trackId)
     setPlaylists((prev) =>
       prev.map((playlist) =>
         playlist.id === playlistId && !playlist.trackIds.includes(trackId)
@@ -302,7 +321,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
-  const removeTrackFromPlaylist = useCallback((playlistId: string, trackId: string) => {
+  const removeTrackFromPlaylist = useCallback(async (playlistId: string, trackId: string) => {
+    await removePlaylistAudio(playlistId, trackId)
     setPlaylists((prev) =>
       prev.map((playlist) =>
         playlist.id === playlistId
@@ -312,18 +332,27 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
-  const movePlaylistTrack = useCallback((playlistId: string, from: number, to: number) => {
-    setPlaylists((prev) =>
-      prev.map((playlist) => {
-        if (playlist.id !== playlistId) return playlist
-        if (to < 0 || to >= playlist.trackIds.length) return playlist
-        const trackIds = [...playlist.trackIds]
-        const [moved] = trackIds.splice(from, 1)
-        trackIds.splice(to, 0, moved)
-        return { ...playlist, trackIds }
-      })
-    )
-  }, [])
+  // `to` is the 0-based index the track should end up at, same as the API position
+  const movePlaylistTrack = useCallback(
+    async (playlistId: string, from: number, to: number) => {
+      const playlist = playlists.find((item) => item.id === playlistId)
+      if (!playlist || to < 0 || to >= playlist.trackIds.length) return
+      const audioId = playlist.trackIds[from]
+      if (!audioId) return
+      await movePlaylistAudio(playlistId, audioId, to)
+      setPlaylists((prev) =>
+        prev.map((item) => {
+          if (item.id !== playlistId) return item
+          const trackIds = [...item.trackIds]
+          const [moved] = trackIds.splice(from, 1)
+          if (moved === undefined) return item
+          trackIds.splice(to, 0, moved)
+          return { ...item, trackIds }
+        })
+      )
+    },
+    [playlists]
+  )
 
   const trackById = useCallback(
     (id: string) => tracks.find((track) => track.id === id),

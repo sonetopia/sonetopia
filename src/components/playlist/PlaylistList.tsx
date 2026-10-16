@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { cn } from "cn"
 import { ListMusic, MoreHorizontal, Play, Shuffle, Trash2 } from "lucide-react"
@@ -18,6 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { PlaylistDeleteDialog } from "@/components/playlist/PlaylistDeleteDialog"
 import { AudioCover, EmptyState } from "@/components/shared"
 import { usePlayer } from "@/components/player/PlayerProvider"
 import { formatTotalDuration, useLibrary, type Playlist, type Track } from "@/lib/library"
@@ -62,8 +63,9 @@ type PlaylistListProps = {
 }
 
 export function PlaylistList({ playlists, emptyAction, layout = "grid" }: PlaylistListProps) {
-  const { tracksByIds, deletePlaylist } = useLibrary()
+  const { tracksByIds } = useLibrary()
   const { playTracks } = usePlayer()
+  const [deleteTarget, setDeleteTarget] = useState<Playlist | null>(null)
 
   if (playlists.length === 0) {
     return (
@@ -128,7 +130,7 @@ export function PlaylistList({ playlists, emptyAction, layout = "grid" }: Playli
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       variant="destructive"
-                      onClick={() => deletePlaylist(playlist.id)}
+                      onClick={() => setDeleteTarget(playlist)}
                     >
                       <Trash2 />
                       Delete playlist
@@ -155,6 +157,14 @@ export function PlaylistList({ playlists, emptyAction, layout = "grid" }: Playli
           </Card>
         )
       })}
+
+      <PlaylistDeleteDialog
+        playlist={deleteTarget}
+        open={deleteTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setDeleteTarget(null)
+        }}
+      />
     </div>
   )
 }

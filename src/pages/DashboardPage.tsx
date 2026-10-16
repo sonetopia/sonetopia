@@ -38,7 +38,9 @@ export function DashboardPage() {
           emptyAction={
             <PlaylistForm
               submitLabel="Create playlist"
-              onSubmit={(values) => createPlaylist(values)}
+              onSubmit={async (values) => {
+                await createPlaylist(values)
+              }}
               trigger={
                 <Button variant="outline">
                   <Plus />

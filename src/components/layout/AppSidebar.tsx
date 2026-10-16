@@ -101,7 +101,9 @@ export function AppSidebar() {
               <SidebarMenuItem>
                 <PlaylistForm
                   submitLabel="Create playlist"
-                  onSubmit={(values) => createPlaylist(values)}
+                  onSubmit={async (values) => {
+                    await createPlaylist(values)
+                  }}
                   trigger={
                     <SidebarMenuButton tooltip="Create playlist">
                       <Plus />
