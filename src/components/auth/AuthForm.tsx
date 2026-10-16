@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { CircleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -11,8 +11,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth"
+import { Field, FieldLabel } from "@/components/ui/field"
 
 type AuthFormProps = {
   mode: "sign-in" | "sign-up"
@@ -21,23 +21,35 @@ type AuthFormProps = {
 export function AuthForm({ mode }: AuthFormProps) {
   const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const isSignUp = mode === "sign-up"
   const [values, setValues] = useState({
-    name: "",
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
   })
   const [error, setError] = useState("")
+  const [submitting, setSubmitting] = useState(false)
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    const result = isSignUp ? signUp(values) : signIn(values)
-    if (!result.ok) {
-      setError(result.error)
-      return
+    if (submitting) return
+
+    setError("")
+    setSubmitting(true)
+    try {
+      const result = isSignUp ? await signUp(values) : await signIn(values)
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+
+      const from = (location.state as { from?: string } | null)?.from
+      navigate(from?.startsWith("/") ? from : "/dashboard", { replace: true })
+    } finally {
+      setSubmitting(false)
     }
-    navigate("/dashboard", { replace: true })
   }
 
   return (
@@ -52,61 +64,73 @@ export function AuthForm({ mode }: AuthFormProps) {
       </CardHeader>
       <CardContent>
         <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
+          <Field className="flex flex-col gap-1.5">
+            <FieldLabel htmlFor="auth-username">Username</FieldLabel>
+            <Input
+              id="auth-username"
+              value={values.username}
+              autoComplete="username"
+              placeholder="Your username"
+              required
+              minLength={3}
+              maxLength={50}
+              onChange={(event) =>
+                setValues((prev) => ({ ...prev, username: event.target.value }))
+              }
+            />
+          </Field>
+
           {isSignUp ? (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="auth-name">Name</Label>
+            <Field className="flex flex-col gap-1.5">
+              <FieldLabel htmlFor="auth-email">Email</FieldLabel>
               <Input
-                id="auth-name"
-                value={values.name}
-                autoComplete="name"
-                placeholder="Your name"
+                id="auth-email"
+                type="email"
+                value={values.email}
+                autoComplete="email"
+                placeholder="you@example.com"
+                required
                 onChange={(event) =>
-                  setValues((prev) => ({ ...prev, name: event.target.value }))
+                  setValues((prev) => ({ ...prev, email: event.target.value }))
                 }
               />
-            </div>
+            </Field>
           ) : null}
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="auth-email">Email</Label>
-            <Input
-              id="auth-email"
-              type="email"
-              value={values.email}
-              autoComplete="email"
-              placeholder="you@example.com"
-              onChange={(event) => setValues((prev) => ({ ...prev, email: event.target.value }))}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="auth-password">Password</Label>
+          <Field className="flex flex-col gap-1.5">
+            <FieldLabel htmlFor="auth-password">Password</FieldLabel>
             <Input
               id="auth-password"
               type="password"
               value={values.password}
               autoComplete={isSignUp ? "new-password" : "current-password"}
-              placeholder={isSignUp ? "At least 8 characters" : "Your password"}
+              placeholder={isSignUp ? "At least 6 characters" : "Your password"}
+              required
+              minLength={isSignUp ? 6 : undefined}
+              maxLength={isSignUp ? 100 : undefined}
               onChange={(event) =>
                 setValues((prev) => ({ ...prev, password: event.target.value }))
               }
             />
-          </div>
+          </Field>
 
           {isSignUp ? (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="auth-confirm">Confirm password</Label>
+            <Field className="flex flex-col gap-1.5">
+              <FieldLabel htmlFor="auth-confirm">Confirm password</FieldLabel>
               <Input
                 id="auth-confirm"
                 type="password"
                 value={values.confirmPassword}
                 autoComplete="new-password"
                 placeholder="Repeat your password"
+                required
+                minLength={6}
+                maxLength={100}
                 onChange={(event) =>
                   setValues((prev) => ({ ...prev, confirmPassword: event.target.value }))
                 }
               />
-            </div>
+            </Field>
           ) : null}
 
           {error ? (
@@ -119,8 +143,14 @@ export function AuthForm({ mode }: AuthFormProps) {
             </p>
           ) : null}
 
-          <Button type="submit" className="mt-1">
-            {isSignUp ? "Create account" : "Sign in"}
+          <Button type="submit" className="mt-1" disabled={submitting}>
+            {submitting
+              ? isSignUp
+                ? "Creating account..."
+                : "Signing in..."
+              : isSignUp
+                ? "Create account"
+                : "Sign in"}
           </Button>
         </form>
       </CardContent>

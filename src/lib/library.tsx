@@ -27,6 +27,7 @@ import {
   type UpdateAudioInput,
 } from "@/api/audio"
 import { forgetCover, resolveCoverUrl } from "@/lib/covers"
+import { useAuth } from "@/lib/auth"
 import {
   addPlaylistAudio,
   createPlaylist as createPlaylistRequest,
@@ -202,12 +203,16 @@ type LibraryValue = {
 const LibraryContext = createContext<LibraryValue | null>(null)
 
 export function LibraryProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
+  const userId = user?.id
   const [tracks, setTracks] = useState<Track[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [playlists, setPlaylists] = useState<Playlist[]>([])
 
   useEffect(() => {
+    if (!userId) return
+
     let cancelled = false
 
     const audio = listAudio()
@@ -215,6 +220,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       .then((apiTracks) => {
         if (cancelled) return
         setTracks(apiTracks)
+        setError(null)
       })
 
     const playlistRows = listPlaylists().then(async (rows) => {
@@ -225,16 +231,19 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
     Promise.all([audio, playlistRows])
       .catch((cause: unknown) => {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : "Failed to load your library")
+        if (cancelled) return
+        setTracks([])
+        setPlaylists([])
+        setError(cause instanceof Error ? cause.message : "Failed to load your library")
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) setLoadedUserId(userId)
       })
 
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [userId])
 
   const addUploads = useCallback(async (inputs: UploadInput[]) => {
     const created: Track[] = []
@@ -369,8 +378,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     () => ({
       tracks,
       playlists,
-      loading,
-      error,
+      loading: Boolean(userId) && loadedUserId !== userId,
+      error: loadedUserId === userId ? error : null,
       trackById,
       tracksByIds,
       addUploads,
@@ -387,7 +396,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     [
       tracks,
       playlists,
-      loading,
+      userId,
+      loadedUserId,
       error,
       trackById,
       tracksByIds,

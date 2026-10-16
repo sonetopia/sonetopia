@@ -1,13 +1,16 @@
-import { Outlet, useLocation } from "react-router-dom"
+import { Navigate, Outlet, useLocation } from "react-router-dom"
+import { LoaderCircle } from "lucide-react"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { cn } from "cn"
 import { AppSidebar } from "@/components/layout/AppSidebar"
 import { PlayerBar } from "@/components/player/PlayerBar"
 import { usePlayer } from "@/components/player/PlayerProvider"
 import { Brand } from "@/components/shared"
+import { useAuth } from "@/lib/auth"
 
 const PAGE_LABELS: Record<string, string> = {
   "/dashboard": "Dashboard",
+  "/account": "Account",
   "/library": "Library",
   "/queue": "Queue",
   "/upload": "Upload",
@@ -21,6 +24,22 @@ function pageLabel(pathname: string) {
 export function AppShell() {
   const { pathname } = useLocation()
   const { current } = usePlayer()
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="grid min-h-svh place-items-center text-sm text-muted-foreground">
+        <span className="flex items-center gap-2">
+          <LoaderCircle className="size-4 animate-spin" />
+          Loading your library...
+        </span>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: pathname }} />
+  }
 
   return (
     <SidebarProvider>

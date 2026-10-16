@@ -7,103 +7,195 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { loadJSON, saveJSON } from "@/lib/persist"
+import {
+  getCurrentUser,
+  login as loginRequest,
+  register as registerRequest,
+  updateCurrentUser as updateCurrentUserRequest,
+  type AuthResponse,
+  type UpdateUserInput,
+} from "@/api/auth"
+import {
+  clearSession,
+  getStoredSession,
+  saveSession,
+  UNAUTHORIZED_EVENT,
+  type AuthSession,
+  type AuthUser,
+} from "@/lib/session"
 
-export type User = {
-  id: string
-  name: string
-  email: string
-}
-
-type Account = User & { password: string }
+export type User = AuthUser
 
 export type AuthResult = { ok: true } | { ok: false; error: string }
 
 type AuthValue = {
   user?: User
+  loading: boolean
   signUp: (input: {
-    name: string
+    username: string
     email: string
     password: string
     confirmPassword: string
-  }) => AuthResult
-  signIn: (input: { email: string; password: string }) => AuthResult
+  }) => Promise<AuthResult>
+  signIn: (input: { username: string; password: string }) => Promise<AuthResult>
+  updateProfile: (input: UpdateUserInput) => Promise<AuthResult>
   signOut: () => void
 }
 
-// ponytail: placeholder auth — accounts sit in localStorage in plain text until the Spring API ships
-const USERS_KEY = "sonetopia:users"
-const SESSION_KEY = "sonetopia:session"
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const AuthContext = createContext<AuthValue | null>(null)
 
-const toUser = ({ id, name, email }: Account): User => ({ id, name, email })
+function toSession(auth: AuthResponse): AuthSession {
+  return {
+    token: auth.token,
+    tokenType: auth.tokenType || "Bearer",
+    expiresAt:
+      typeof auth.expiresIn === "number" && auth.expiresIn > 0
+        ? Date.now() + auth.expiresIn * 1000
+        : 0,
+    user: auth.user,
+  }
+}
+
+function errorMessage(cause: unknown) {
+  return cause instanceof Error ? cause.message : "Something went wrong. Please try again."
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [accounts, setAccounts] = useState<Account[]>(() => loadJSON<Account[]>(USERS_KEY, []))
-  const [user, setUser] = useState<User | undefined>(() => {
-    const sessionId = loadJSON<string | null>(SESSION_KEY, null)
-    if (!sessionId) return undefined
-    const account = loadJSON<Account[]>(USERS_KEY, []).find((item) => item.id === sessionId)
-    return account ? toUser(account) : undefined
-  })
+  const [user, setUser] = useState<User | undefined>(() => getStoredSession()?.user)
+  const [loading, setLoading] = useState(() => Boolean(getStoredSession()))
 
-  useEffect(() => saveJSON(USERS_KEY, accounts), [accounts])
+  const applyAuthResponse = useCallback((auth: AuthResponse) => {
+    const next = toSession(auth)
+    saveSession(next)
+    setUser(next.user)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    try {
+      localStorage.removeItem("sonetopia:users")
+    } catch {
+      void 0
+    }
+    const stored = getStoredSession()
+
+    if (!stored) return
+
+    getCurrentUser()
+      .then((currentUser) => {
+        if (cancelled) return
+        const next = { ...stored, user: currentUser }
+        saveSession(next)
+        setUser(currentUser)
+      })
+      .catch(() => {
+        if (cancelled) return
+        clearSession()
+        setUser(undefined)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setUser(undefined)
+      setLoading(false)
+    }
+    window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized)
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized)
+  }, [])
 
   const signUp = useCallback<AuthValue["signUp"]>(
-    (input) => {
-      const name = input.name.trim()
+    async (input) => {
+      const username = input.username.trim()
       const email = input.email.trim().toLowerCase()
 
-      if (name.length < 2) return { ok: false, error: "Please enter your name." }
+      if (username.length < 3 || username.length > 50)
+        return { ok: false, error: "Username must be between 3 and 50 characters." }
       if (!EMAIL_PATTERN.test(email))
         return { ok: false, error: "Please enter a valid email address." }
-      if (input.password.length < 8)
-        return { ok: false, error: "Password must be at least 8 characters." }
+      if (input.password.length < 6)
+        return { ok: false, error: "Password must be at least 6 characters." }
+      if (input.password.length > 100)
+        return { ok: false, error: "Password must be at most 100 characters." }
       if (input.password !== input.confirmPassword)
         return { ok: false, error: "Passwords do not match." }
-      if (accounts.some((account) => account.email === email))
-        return { ok: false, error: "An account with this email already exists." }
 
-      const account: Account = {
-        id: crypto.randomUUID(),
-        name,
-        email,
-        password: input.password,
+      try {
+        applyAuthResponse(await registerRequest({ username, email, password: input.password }))
+        return { ok: true }
+      } catch (cause) {
+        return { ok: false, error: errorMessage(cause) }
       }
-      setAccounts((prev) => [...prev, account])
-      saveJSON(SESSION_KEY, account.id)
-      setUser(toUser(account))
-      return { ok: true }
     },
-    [accounts]
+    [applyAuthResponse]
   )
 
   const signIn = useCallback<AuthValue["signIn"]>(
-    (input) => {
-      const email = input.email.trim().toLowerCase()
-      const account = accounts.find((item) => item.email === email)
+    async (input) => {
+      const username = input.username.trim()
+      if (!username) return { ok: false, error: "Please enter your username." }
+      if (!input.password) return { ok: false, error: "Please enter your password." }
 
-      // never reveal which field was wrong
-      if (!account || account.password !== input.password)
-        return { ok: false, error: "Email or password is incorrect." }
-
-      saveJSON(SESSION_KEY, account.id)
-      setUser(toUser(account))
-      return { ok: true }
+      try {
+        applyAuthResponse(await loginRequest({ username, password: input.password }))
+        return { ok: true }
+      } catch (cause) {
+        return { ok: false, error: errorMessage(cause) }
+      }
     },
-    [accounts]
+    [applyAuthResponse]
   )
 
+  const updateProfile = useCallback<AuthValue["updateProfile"]>(async (input) => {
+    const username = input.username.trim()
+    const email = input.email.trim().toLowerCase()
+
+    if (username.length < 3 || username.length > 50)
+      return { ok: false, error: "Username must be between 3 and 50 characters." }
+    if (!EMAIL_PATTERN.test(email))
+      return { ok: false, error: "Please enter a valid email address." }
+    if (input.password && (!input.currentPassword || !input.currentPassword.trim()))
+      return { ok: false, error: "Enter your current password to set a new password." }
+    if (input.password && input.password.length < 6)
+      return { ok: false, error: "Password must be at least 6 characters." }
+    if (input.password && input.password.length > 100)
+      return { ok: false, error: "Password must be at most 100 characters." }
+
+    try {
+      const updated = await updateCurrentUserRequest({
+        username,
+        email,
+        password: input.password || undefined,
+        currentPassword: input.password ? input.currentPassword : undefined,
+      })
+      const stored = getStoredSession()
+      if (stored) saveSession({ ...stored, user: updated })
+      setUser(updated)
+      return { ok: true }
+    } catch (cause) {
+      return { ok: false, error: errorMessage(cause) }
+    }
+  }, [])
+
   const signOut = useCallback(() => {
-    saveJSON(SESSION_KEY, null)
+    clearSession()
     setUser(undefined)
+    setLoading(false)
   }, [])
 
   const value = useMemo<AuthValue>(
-    () => ({ user, signUp, signIn, signOut }),
-    [user, signUp, signIn, signOut]
+    () => ({ user, loading, signUp, signIn, updateProfile, signOut }),
+    [user, loading, signUp, signIn, updateProfile, signOut]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

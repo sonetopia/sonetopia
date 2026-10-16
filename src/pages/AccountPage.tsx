@@ -1,0 +1,299 @@
+import { useState, type FormEvent } from "react"
+import {
+  CalendarDays,
+  CircleAlert,
+  CircleCheck,
+  HardDrive,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Separator } from "@/components/ui/separator"
+import { PageHeader } from "@/components/shared"
+import { useAuth } from "@/lib/auth"
+import { Field, FieldLabel } from "@/components/ui/field"
+
+const STORAGE_UNITS = ["B", "KB", "MB", "GB", "TB"]
+
+function formatStorage(bytes?: number | null) {
+  if (bytes == null) return "Unknown"
+  if (bytes <= 0) return "0 MB"
+
+  let value = bytes
+  let unit = 0
+  while (value >= 1024 && unit < STORAGE_UNITS.length - 1) {
+    value /= 1024
+    unit += 1
+  }
+  return `${value.toFixed(unit > 1 ? 1 : 0)} ${STORAGE_UNITS[unit]}`
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "Unknown"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "Unknown"
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })
+}
+
+export function AccountPage() {
+  const { user, updateProfile } = useAuth()
+  const [values, setValues] = useState({
+    username: user?.username ?? "",
+    email: user?.email ?? "",
+    currentPassword: "",
+    password: "",
+    confirmPassword: "",
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
+  const [saved, setSaved] = useState(false)
+
+  const initials = (user?.username ?? "Account")
+    .split(" ")
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase()
+
+  const isDirty =
+    values.username !== (user?.username ?? "") ||
+    values.email !== (user?.email ?? "") ||
+    values.password.length > 0 ||
+    values.confirmPassword.length > 0
+
+  function updateField(field: keyof typeof values, value: string) {
+    setValues((prev) => ({ ...prev, [field]: value }))
+    setError("")
+    setSaved(false)
+  }
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    if (saving || !isDirty) return
+
+    if (values.password && !values.currentPassword.trim()) {
+      setError("Enter your current password to set a new password.")
+      return
+    }
+
+    if (values.password !== values.confirmPassword) {
+      setError("Passwords do not match.")
+      return
+    }
+
+    setSaving(true)
+    setError("")
+    setSaved(false)
+
+    try {
+      const result = await updateProfile({
+        username: values.username,
+        email: values.email,
+        password: values.password || undefined,
+        currentPassword: values.password ? values.currentPassword : undefined,
+      })
+
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+
+      setValues((prev) => ({
+        ...prev,
+        username: prev.username.trim(),
+        email: prev.email.trim().toLowerCase(),
+        currentPassword: "",
+        password: "",
+        confirmPassword: "",
+      }))
+      setSaved(true)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title="Account"
+      />
+
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <Card className="h-full order-2 lg:order-1">
+          <CardHeader>
+            <CardTitle>Profile details</CardTitle>
+          </CardHeader>
+          <form id="account-profile-form" onSubmit={handleSubmit}>
+            <CardContent className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field className="flex flex-col gap-1.5">
+                  <FieldLabel htmlFor="account-username">Username</FieldLabel>
+                  <Input
+                    id="account-username"
+                    value={values.username}
+                    autoComplete="username"
+                    minLength={3}
+                    maxLength={50}
+                    required
+                    disabled={saving}
+                    onChange={(event) => updateField("username", event.target.value)}
+                  />
+                </Field>
+
+                <Field className="flex flex-col gap-1.5">
+                  <FieldLabel htmlFor="account-email">Email</FieldLabel>
+                  <Input
+                    id="account-email"
+                    type="email"
+                    value={values.email}
+                    autoComplete="email"
+                    maxLength={255}
+                    required
+                    disabled={saving}
+                    onChange={(event) => updateField("email", event.target.value)}
+                  />
+                </Field>
+              </div>
+
+              <Separator className="mt-7 mb-6" />
+
+              <p className="text-xs text-muted-foreground mb-3">
+                Leave the fields empty to keep your current password.
+              </p>
+
+              <Field className="flex flex-col gap-1.5">
+                <FieldLabel htmlFor="account-current-password">Current password</FieldLabel>
+                <Input
+                  id="account-current-password"
+                  type="password"
+                  value={values.currentPassword}
+                  autoComplete="current-password"
+                  required={values.password.length > 0 || values.confirmPassword.length > 0}
+                  disabled={saving}
+                  onChange={(event) => updateField("currentPassword", event.target.value)}
+                />
+              </Field>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field className="flex flex-col gap-1.5">
+                  <FieldLabel htmlFor="account-password">New password</FieldLabel>
+                  <Input
+                    id="account-password"
+                    type="password"
+                    value={values.password}
+                    autoComplete="new-password"
+                    minLength={6}
+                    maxLength={100}
+                    disabled={saving}
+                    onChange={(event) => updateField("password", event.target.value)}
+                  />
+                </Field>
+
+                <Field className="flex flex-col gap-1.5">
+                  <FieldLabel htmlFor="account-confirm-password">Confirm new password</FieldLabel>
+                  <Input
+                    id="account-confirm-password"
+                    type="password"
+                    value={values.confirmPassword}
+                    autoComplete="new-password"
+                    minLength={6}
+                    maxLength={100}
+                    disabled={saving}
+                    onChange={(event) => updateField("confirmPassword", event.target.value)}
+                  />
+                </Field>
+              </div>
+
+              {error ? (
+                <p
+                  role="alert"
+                  className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-xs text-destructive"
+                >
+                  <CircleAlert className="size-3.5 shrink-0" />
+                  {error}
+                </p>
+              ) : null}
+
+              {saved ? (
+                <p className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-xs text-primary">
+                  <CircleCheck className="size-3.5 shrink-0" />
+                  Your profile has been updated.
+                </p>
+              ) : null}
+            </CardContent>
+            <CardFooter className="mt-4 justify-end">
+              <Button type="submit" form="account-profile-form" disabled={saving || !isDirty}>
+                {saving ? "Saving..." : "Save changes"}
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
+
+        <Card className="h-full order-1 lg:order-2">
+          <CardContent className="flex flex-col h-full gap-4 justify-around">
+            <div className="flex flex-col flex-1 items-center justify-center gap-3 text-center">
+              <span className="grid size-20 place-items-center rounded-full bg-primary text-2xl font-semibold text-primary-foreground">
+                {initials}
+              </span>
+              <div className="space-y-1">
+                <p className="font-heading text-lg font-semibold">{user?.username}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
+              </div>
+              <Badge variant="secondary">
+                {user?.isAdmin ? (
+                  <>
+                    <ShieldCheck />
+                    Administrator
+                  </>
+                ) : (
+                  "Listener"
+                )}
+              </Badge>
+            </div>
+
+            <Separator />
+
+            <dl className="space-y-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <dt className="flex items-center gap-2 text-muted-foreground">
+                  <HardDrive className="size-4" />
+                  Storage used
+                </dt>
+                <dd className="font-medium">{formatStorage(user?.storageUsed)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="flex items-center gap-2 text-muted-foreground">
+                  <CalendarDays className="size-4" />
+                  Member since
+                </dt>
+                <dd className="font-medium">{formatDate(user?.createdAt)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="flex items-center gap-2 text-muted-foreground">
+                  <UserRound className="size-4" />
+                  Account ID
+                </dt>
+                <dd className="max-w-24 truncate font-mono text-xs" title={user?.id}>
+                  {user?.id}
+                </dd>
+              </div>
+            </dl>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}

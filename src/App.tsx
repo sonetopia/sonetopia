@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/AppShell"
 import { PublicShell } from "@/components/layout/PublicShell"
 import { PlayerProvider } from "@/components/player/PlayerProvider"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { AccountPage } from "@/pages/AccountPage"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { LandingPage } from "@/pages/LandingPage"
 import { LibraryPage } from "@/pages/LibraryPage"
@@ -31,6 +32,7 @@ function App() {
 
                 <Route element={<AppShell />}>
                   <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/account" element={<AccountPage />} />
                   <Route path="/library" element={<LibraryPage />} />
                   <Route path="/playlists/:id" element={<PlaylistDetailPage />} />
                   <Route path="/queue" element={<QueuePage />} />
