@@ -118,7 +118,7 @@ export function PlaylistDetailPage() {
         title="Playlist not found"
         description="It may have been deleted."
         action={
-          <Button variant="outline" render={<Link to="/dashboard" />}>
+          <Button variant="outline" render={<Link to="/" />}>
             Back to dashboard
           </Button>
         }
@@ -247,7 +247,7 @@ export function PlaylistDetailPage() {
         playlist={playlist}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        onDeleted={() => navigate("/dashboard")}
+        onDeleted={() => navigate("/")}
       />
     </div>
   )

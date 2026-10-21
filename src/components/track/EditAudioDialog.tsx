@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
-import { CircleAlert, ImagePlus } from "lucide-react"
+import { ImagePlus } from "lucide-react"
 import { getAudio } from "@/api/audio"
 import { Button } from "@/components/ui/button"
+import { notify } from "@/components/ui/notification-toast"
 import {
   Dialog,
   DialogContent,
@@ -47,7 +48,6 @@ export function EditAudioDialog({ track, open, onOpenChange }: EditAudioDialogPr
   const [replacement, setReplacement] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -60,7 +60,6 @@ export function EditAudioDialog({ track, open, onOpenChange }: EditAudioDialogPr
     setYear("")
     setCover(null)
     setReplacement(null)
-    setError(null)
     setLoading(true)
     if (coverRef.current) coverRef.current.value = ""
     if (audioRef.current) audioRef.current.value = ""
@@ -74,7 +73,9 @@ export function EditAudioDialog({ track, open, onOpenChange }: EditAudioDialogPr
         setYear(audio.year != null ? String(audio.year) : "")
       })
       .catch((cause: unknown) => {
-        if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not load this audio")
+        if (!cancelled) {
+          notify.error(cause instanceof Error ? cause.message : "Could not load this audio")
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -90,7 +91,6 @@ export function EditAudioDialog({ track, open, onOpenChange }: EditAudioDialogPr
     if (saving || title.trim().length === 0) return
 
     setSaving(true)
-    setError(null)
     try {
       await updateTrack(track.id, {
         title: title.trim(),
@@ -103,7 +103,7 @@ export function EditAudioDialog({ track, open, onOpenChange }: EditAudioDialogPr
       })
       onOpenChange(false)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not save changes")
+      notify.error(cause instanceof Error ? cause.message : "Could not save changes")
     } finally {
       setSaving(false)
     }
@@ -219,12 +219,6 @@ export function EditAudioDialog({ track, open, onOpenChange }: EditAudioDialogPr
             </div>
           </Field>
 
-          {error ? (
-            <p className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-              <CircleAlert className="size-3.5" />
-              {error}
-            </p>
-          ) : null}
         </form>
 
         <DialogFooter>

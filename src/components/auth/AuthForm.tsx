@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
-import { CircleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { notify } from "@/components/ui/notification-toast"
 import {
   Card,
   CardContent,
@@ -14,14 +13,16 @@ import { Input } from "@/components/ui/input"
 import { useAuth } from "@/lib/auth"
 import { Field, FieldLabel } from "@/components/ui/field"
 
+export type AuthMode = "sign-in" | "sign-up"
+
 type AuthFormProps = {
-  mode: "sign-in" | "sign-up"
+  mode: AuthMode
+  onModeChange: (mode: AuthMode) => void
+  onSuccess?: () => void
 }
 
-export function AuthForm({ mode }: AuthFormProps) {
+export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
   const { signIn, signUp } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
   const isSignUp = mode === "sign-up"
   const [values, setValues] = useState({
     username: "",
@@ -29,32 +30,29 @@ export function AuthForm({ mode }: AuthFormProps) {
     password: "",
     confirmPassword: "",
   })
-  const [error, setError] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (submitting) return
 
-    setError("")
     setSubmitting(true)
     try {
       const result = isSignUp ? await signUp(values) : await signIn(values)
       if (!result.ok) {
-        setError(result.error)
+        notify.error(result.error)
         return
       }
 
-      const from = (location.state as { from?: string } | null)?.from
-      navigate(from?.startsWith("/") ? from : "/dashboard", { replace: true })
+      onSuccess?.()
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
+    <Card className="w-full max-w-md ring-0">
+      <CardHeader className="px-1">
         <CardTitle>{isSignUp ? "Create your library" : "Welcome back"}</CardTitle>
         <CardDescription>
           {isSignUp
@@ -62,9 +60,9 @@ export function AuthForm({ mode }: AuthFormProps) {
             : "Sign in to reach your library, playlists, and queue."}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-1">
         <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-          <Field className="flex flex-col gap-1.5">
+          <Field>
             <FieldLabel htmlFor="auth-username">Username</FieldLabel>
             <Input
               id="auth-username"
@@ -81,7 +79,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           </Field>
 
           {isSignUp ? (
-            <Field className="flex flex-col gap-1.5">
+            <Field>
               <FieldLabel htmlFor="auth-email">Email</FieldLabel>
               <Input
                 id="auth-email"
@@ -97,7 +95,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             </Field>
           ) : null}
 
-          <Field className="flex flex-col gap-1.5">
+          <Field>
             <FieldLabel htmlFor="auth-password">Password</FieldLabel>
             <Input
               id="auth-password"
@@ -115,7 +113,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           </Field>
 
           {isSignUp ? (
-            <Field className="flex flex-col gap-1.5">
+            <Field>
               <FieldLabel htmlFor="auth-confirm">Confirm password</FieldLabel>
               <Input
                 id="auth-confirm"
@@ -133,17 +131,7 @@ export function AuthForm({ mode }: AuthFormProps) {
             </Field>
           ) : null}
 
-          {error ? (
-            <p
-              role="alert"
-              className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-xs text-destructive"
-            >
-              <CircleAlert className="size-3.5 shrink-0" />
-              {error}
-            </p>
-          ) : null}
-
-          <Button type="submit" className="mt-1" disabled={submitting}>
+          <Button type="submit" className="mt-2" disabled={submitting}>
             {submitting
               ? isSignUp
                 ? "Creating account..."
@@ -154,15 +142,16 @@ export function AuthForm({ mode }: AuthFormProps) {
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="justify-between gap-2 text-xs text-muted-foreground">
+      <CardFooter className="px-2 py-1 justify-between text-xs text-muted-foreground border-0 bg-card">
         <span>
           {isSignUp ? "Already have an account?" : "New to Sonetopia?"}{" "}
-          <Link
-            to={isSignUp ? "/login" : "/register"}
+          <button
+            type="button"
             className="font-medium text-primary hover:underline"
+            onClick={() => onModeChange(isSignUp ? "sign-in" : "sign-up")}
           >
             {isSignUp ? "Sign in" : "Create account"}
-          </Link>
+          </button>
         </span>
       </CardFooter>
     </Card>

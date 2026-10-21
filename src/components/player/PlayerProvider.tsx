@@ -171,11 +171,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   // OS / lock-screen controls keep working while the tab is in the background
   useEffect(() => {
-    if (!("mediaSession" in navigator) || !current) return
+    if (!("mediaSession" in navigator)) return
+    if (!current) {
+      navigator.mediaSession.metadata = null
+      return
+    }
     navigator.mediaSession.metadata = new MediaMetadata({
       title: current.title,
       artist: current.artist,
       album: AUDIO_KINDS[current.kind].label,
+      artwork: current.coverUrl
+        ? [{ src: current.coverUrl }]
+        : [
+            { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
+            { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
+          ],
     })
     navigator.mediaSession.setActionHandler("play", () => setIsPlaying(true))
     navigator.mediaSession.setActionHandler("pause", () => setIsPlaying(false))

@@ -8,17 +8,24 @@ import type { Track } from "@/lib/library"
 type QuickPicksListProps = {
   tracks: Track[]
   emptyAction?: ReactNode
+  emptyTitle?: string
+  emptyDescription?: string
 }
 
 /** Compact pick tiles: play button, cover, title + artist, and the track menu. */
-export function QuickPicksList({ tracks, emptyAction }: QuickPicksListProps) {
+export function QuickPicksList({
+  tracks,
+  emptyAction,
+  emptyTitle = "Your library is empty",
+  emptyDescription = "Upload your first audio file to get started.",
+}: QuickPicksListProps) {
   const { current, isPlaying, toggle, playTracks } = usePlayer()
 
   if (tracks.length === 0) {
     return (
       <EmptyState
-        title="Your library is empty"
-        description="Upload your first audio file to get started."
+        title={emptyTitle}
+        description={emptyDescription}
         action={emptyAction}
       />
     )

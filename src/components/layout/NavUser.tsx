@@ -1,5 +1,6 @@
-import { BadgeCheckIcon, ChevronsUpDown, LogOut, Moon, Sun } from "lucide-react"
+import { BadgeCheckIcon, ChevronsUpDown, LogIn, LogOut, Moon, Sun } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { useAuthDialog } from "@/components/auth/AuthDialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -23,6 +24,7 @@ export function NavUser() {
   const { isMobile } = useSidebar()
   const { dark, toggle } = useTheme()
   const { user, signOut } = useAuth()
+  const { openAuth } = useAuthDialog()
   const navigate = useNavigate()
 
   const name = user?.username ?? "Account"
@@ -37,7 +39,23 @@ export function NavUser() {
 
   function handleSignOut() {
     signOut()
-    navigate("/login", { replace: true })
+    navigate("/", { replace: true })
+  }
+
+  if (!user) {
+    return (
+      <SidebarMenu className="mb-1">
+        <SidebarMenuItem>
+          <SidebarMenuButton size="lg" onClick={() => openAuth("sign-in")}>
+            <LogIn />
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate font-medium">Sign in</span>
+              <span className="truncate text-xs">Access your library</span>
+            </div>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
   }
 
   return (

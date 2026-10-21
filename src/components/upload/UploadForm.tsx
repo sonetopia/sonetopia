@@ -2,7 +2,6 @@ import { useRef, useState, type DragEvent, type FormEvent } from "react"
 import { cn } from "cn"
 import {
   ChevronDown,
-  CircleAlert,
   FileAudio,
   HardDriveUpload,
   ImagePlus,
@@ -13,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
+import { notify } from "@/components/ui/notification-toast"
 import {
   Field,
   FieldLabel,
@@ -51,8 +51,6 @@ export function UploadForm() {
   const dragDepth = useRef(0)
   const [drafts, setDrafts] = useState<Draft[]>([])
   const [linkAllId, setLinkAllId] = useState<string | null>(null)
-  const [errors, setErrors] = useState<string[]>([])
-  const [savedCount, setSavedCount] = useState(0)
   const [saving, setSaving] = useState(false)
   const [dragActive, setDragActive] = useState(false)
 
@@ -82,8 +80,12 @@ export function UploadForm() {
       })
     }
 
-    setErrors(rejected)
-    setSavedCount(0)
+    if (rejected.length > 0) {
+      notify.error(
+        rejected.length === 1 ? rejected[0] : `${rejected.length} files were skipped`,
+        rejected.length > 1 ? rejected.join("; ") : undefined
+      )
+    }
     if (accepted.length) setDrafts((prev) => [...prev, ...accepted])
   }
 
@@ -173,15 +175,14 @@ export function UploadForm() {
     }))
 
     setSaving(true)
-    setErrors([])
     try {
       const count = await addUploads(inputs)
       setDrafts([])
       setLinkAllId(null)
-      setSavedCount(count)
+      notify.success(`${count} file${count === 1 ? "" : "s"} added to your library.`)
       if (inputRef.current) inputRef.current.value = ""
     } catch (cause) {
-      setErrors([cause instanceof Error ? cause.message : "Upload failed"])
+      notify.error(cause instanceof Error ? cause.message : "Upload failed")
     } finally {
       setSaving(false)
     }
@@ -232,17 +233,6 @@ export function UploadForm() {
           Choose files
         </Button>
       </div>
-
-      {errors.length > 0 ? (
-        <ul className="flex flex-col gap-1 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-          {errors.map((error) => (
-            <li key={error} className="flex items-center gap-2">
-              <CircleAlert className="size-3.5" />
-              {error}
-            </li>
-          ))}
-        </ul>
-      ) : null}
 
       {drafts.length > 0 ? (
         <div className="flex flex-col gap-3">
@@ -420,11 +410,6 @@ export function UploadForm() {
               ? `Save ${drafts.length} file${drafts.length === 1 ? "" : "s"}`
               : "Save to library"}
         </Button>
-        {savedCount > 0 ? (
-          <p className="text-xs text-muted-foreground">
-            {savedCount} file{savedCount === 1 ? "" : "s"} added to your library.
-          </p>
-        ) : null}
       </div>
     </form>
   )

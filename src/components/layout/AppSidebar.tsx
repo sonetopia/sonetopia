@@ -1,6 +1,7 @@
 import { Link, NavLink, useLocation } from "react-router-dom"
 import {
   HardDriveUpload,
+  Info,
   LayoutDashboard,
   Library,
   ListMusic,
@@ -25,9 +26,10 @@ import { PlaylistForm } from "@/components/playlist/PlaylistForm"
 import { usePlayer } from "@/components/player/PlayerProvider"
 import { Separator } from "@/components/ui/separator"
 import { useLibrary } from "@/lib/library"
+import { useAuth } from "@/lib/auth"
 
 const NAV = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/library", label: "Library", icon: Library },
   { to: "/queue", label: "Queue", icon: ListOrdered },
   { to: "/upload", label: "Upload", icon: HardDriveUpload },
@@ -36,6 +38,7 @@ const NAV = [
 export function AppSidebar() {
   const { pathname } = useLocation()
   const { playlists, createPlaylist } = useLibrary()
+  const { user } = useAuth()
   const { current } = usePlayer()
   // the mobile sidebar is a sheet, so it has to close itself when a link navigates
   const { setOpenMobile } = useSidebar()
@@ -44,7 +47,6 @@ export function AppSidebar() {
   return (
     <Sidebar
       collapsible="icon"
-      // the player bar publishes --player-bar-height, so the footer never hides behind it
       className={current ? "h-[calc(100svh-var(--player-bar-height,4.5rem))]" : undefined}
     >
       <SidebarHeader>
@@ -54,7 +56,7 @@ export function AppSidebar() {
               size="lg"
               tooltip="Sonetopia"
               onClick={closeMobile}
-              render={<Link to="/dashboard" />}
+              render={<Link to="/" />}
             >
               <span className="grid size-8 shrink-0 place-items-center rounded-lg text-primary-foreground">
                 <img src="/logo-orange-small.png" alt="Sonetopia" className="size-7" />
@@ -70,7 +72,7 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="scrollbar-none">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
@@ -78,7 +80,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.to}>
                   <SidebarMenuButton
                     tooltip={item.label}
-                    isActive={pathname.startsWith(item.to)}
+                    isActive={item.to === "/" ? pathname === "/" : pathname.startsWith(item.to)}
                     onClick={closeMobile}
                     render={<NavLink to={item.to} />}
                   >
@@ -91,45 +93,62 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <div className="ps-3 pe-4 mb-2 mt-3">
-          <Separator />
-        </div>
+        {user ? (
+          <>
+            <div className="ps-3 pe-4 mb-2 mt-3">
+              <Separator />
+            </div>
 
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              <SidebarMenuItem>
-                <PlaylistForm
-                  submitLabel="Create playlist"
-                  onSubmit={async (values) => {
-                    await createPlaylist(values)
-                  }}
-                  trigger={
-                    <SidebarMenuButton tooltip="Create playlist">
-                      <Plus />
-                      <span>New playlist</span>
-                    </SidebarMenuButton>
-                  }
-                />
-              </SidebarMenuItem>
-              {playlists.map((playlist) => (
-                <SidebarMenuItem key={playlist.id}>
-                  <SidebarMenuButton
-                    tooltip={playlist.name}
-                    isActive={pathname === `/playlists/${playlist.id}`}
-                    onClick={closeMobile}
-                    render={<NavLink to={`/playlists/${playlist.id}`} />}
-                  >
-                    <ListMusic />
-                    <span>{playlist.name}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu className="space-y-1">
+                  <SidebarMenuItem>
+                    <PlaylistForm
+                      submitLabel="Create playlist"
+                      onSubmit={async (values) => {
+                        await createPlaylist(values)
+                      }}
+                      trigger={
+                        <SidebarMenuButton tooltip="Create playlist">
+                          <Plus />
+                          <span>New playlist</span>
+                        </SidebarMenuButton>
+                      }
+                    />
+                  </SidebarMenuItem>
+                  {playlists.map((playlist) => (
+                    <SidebarMenuItem key={playlist.id}>
+                      <SidebarMenuButton
+                        tooltip={playlist.name}
+                        isActive={pathname === `/playlists/${playlist.id}`}
+                        onClick={closeMobile}
+                        render={<NavLink to={`/playlists/${playlist.id}`} />}
+                      >
+                        <ListMusic />
+                        <span>{playlist.name}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        ) : null}
       </SidebarContent>
       <SidebarFooter>
+        <SidebarMenu className="mb-0">
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="About this project"
+              isActive={pathname === "/about"}
+              onClick={closeMobile}
+              render={<NavLink to="/about" />}
+            >
+              <Info />
+              <span>About this project</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
         <NavUser />
       </SidebarFooter>
       <SidebarRail />

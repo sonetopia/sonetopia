@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react"
-import { CircleAlert, LoaderCircle } from "lucide-react"
+import { LoaderCircle } from "lucide-react"
+import { notify } from "@/components/ui/notification-toast"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,9 +27,9 @@ type ConfirmDialogProps = {
 }
 
 /**
- * Alert dialog for confirming an action. Owns the pending/error state of
- * `onConfirm`, so an async failure keeps the dialog open and shows the reason
- * instead of closing silently.
+ * Alert dialog for confirming an action. Owns the pending state of
+ * `onConfirm`, so an async failure keeps the dialog open and reports the
+ * reason through a toast instead of closing silently.
  */
 export function ConfirmDialog({
   open,
@@ -43,17 +44,15 @@ export function ConfirmDialog({
   onConfirm,
 }: ConfirmDialogProps) {
   const [pending, setPending] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   async function handleConfirm() {
     if (pending) return
     setPending(true)
-    setError(null)
     try {
       await onConfirm()
       onOpenChange(false)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Something went wrong")
+      notify.error(cause instanceof Error ? cause.message : "Something went wrong")
     } finally {
       setPending(false)
     }
@@ -68,7 +67,6 @@ export function ConfirmDialog({
           eventDetails.cancel()
           return
         }
-        if (!nextOpen) setError(null)
         onOpenChange(nextOpen)
       }}
     >
@@ -88,13 +86,6 @@ export function ConfirmDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           {description ? <AlertDialogDescription>{description}</AlertDialogDescription> : null}
         </AlertDialogHeader>
-
-        {error ? (
-          <p className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-            <CircleAlert className="size-3.5 shrink-0" />
-            {error}
-          </p>
-        ) : null}
 
         <AlertDialogFooter>
           <AlertDialogCancel variant="outline" disabled={pending}>

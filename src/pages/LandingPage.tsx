@@ -18,7 +18,6 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/lib/auth"
 import { useIsMobile } from "@/hooks/use-mobile"
 
 const FEATURES: { icon: LucideIcon; title: string; body: string }[] = [
@@ -90,13 +89,17 @@ type SoundEffect = {
 }
 
 export function LandingPage() {
-  const { user } = useAuth()
+  const isMobile = useIsMobile()
   const [soundEffects, setSoundEffects] = useState<SoundEffect[]>([])
   const [activeSoundEffect, setActiveSoundEffect] = useState<SoundEffect | null>(null)
   const [isSoundEffectPlaying, setIsSoundEffectPlaying] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const primaryTo = user ? "/dashboard" : "/register"
-  const primaryLabel = user ? "Open your library" : "Create your library"
+  const primaryButton = (
+    <Button size="lg" render={<Link to="/" />}>
+      Open the app
+      <ArrowRight />
+    </Button>
+  )
 
   useEffect(() => {
     let isMounted = true
@@ -160,7 +163,7 @@ export function LandingPage() {
     <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-12">
       <section className="grid min-h-[min(680px,calc(100svh-9rem))] items-center gap-12 border-b pb-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-20">
         <div className="space-y-8">
-          <p className="text-xs font-medium uppercase tracking-[0.24em] text-primary">{useIsMobile() ? "Your sound, everywhere." : "Private audio library"}</p>
+          <p className="text-xs font-medium uppercase tracking-[0.24em] text-primary">{isMobile ? "Your sound, everywhere." : "Private audio library"}</p>
           <h1 className="font-heading max-w-3xl text-5xl -ms-1 font-semibold leading-[0.98] tracking-[-0.04em] sm:text-7xl">
             Keep listening. Keep your space.
           </h1>
@@ -169,15 +172,7 @@ export function LandingPage() {
             any browser without filling your phone with copies.
           </p>
           <div className="flex flex-wrap items-center gap-4">
-            <Button size="lg" render={<Link to={primaryTo} />}>
-              {primaryLabel}
-              <ArrowRight />
-            </Button>
-            {!user && (
-              <Link className="text-sm font-medium underline-offset-4 hover:underline" to="/login">
-                Sign in
-              </Link>
-            )}
+            {primaryButton}
           </div>
         </div>
 
@@ -304,10 +299,7 @@ export function LandingPage() {
           <h2 className="font-heading text-3xl font-semibold tracking-[-0.03em]">Bring your sound with you.</h2>
           <p className="max-w-lg text-sm leading-6 text-muted-foreground">A private library, and more room on your device.</p>
         </div>
-        <Button size="lg" render={<Link to={primaryTo} />}>
-          {primaryLabel}
-          <ArrowRight />
-        </Button>
+        {primaryButton}
       </section>
     </div>
   )

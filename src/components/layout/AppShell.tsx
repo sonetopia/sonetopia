@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useLocation } from "react-router-dom"
+import { Outlet, useLocation } from "react-router-dom"
 import { LoaderCircle } from "lucide-react"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { cn } from "cn"
@@ -9,7 +9,7 @@ import { Brand } from "@/components/shared"
 import { useAuth } from "@/lib/auth"
 
 const PAGE_LABELS: Record<string, string> = {
-  "/dashboard": "Dashboard",
+  "/": "Dashboard",
   "/account": "Account",
   "/library": "Library",
   "/queue": "Queue",
@@ -24,7 +24,7 @@ function pageLabel(pathname: string) {
 export function AppShell() {
   const { pathname } = useLocation()
   const { current } = usePlayer()
-  const { user, loading } = useAuth()
+  const { loading } = useAuth()
 
   if (loading) {
     return (
@@ -37,14 +37,10 @@ export function AppShell() {
     )
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace state={{ from: pathname }} />
-  }
-
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 border-b bg-background/85 px-3 backdrop-blur">
           <SidebarTrigger className="-ml-1" />
           <Brand subtitle="Audio library" className="md:hidden" />

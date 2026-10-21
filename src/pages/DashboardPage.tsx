@@ -1,11 +1,13 @@
 import { useMemo } from "react"
 import { Link } from "react-router-dom"
-import { ArrowRight, Plus } from "lucide-react"
+import { ArrowRight, LogIn, Plus } from "lucide-react"
+import { useAuthDialog } from "@/components/auth/AuthDialog"
 import { Button } from "@/components/ui/button"
 import { SectionHeader } from "@/components/shared"
 import { PlaylistList } from "@/components/playlist/PlaylistList"
 import { PlaylistForm } from "@/components/playlist/PlaylistForm"
 import { QuickPicksList } from "@/components/dashboard/QuickPicksList"
+import { useAuth } from "@/lib/auth"
 import { useLibrary } from "@/lib/library"
 import { shuffledOrder } from "@/lib/playback"
 
@@ -13,6 +15,8 @@ const QUICK_PICK_COUNT = 6
 
 export function DashboardPage() {
   const { tracks, playlists, createPlaylist } = useLibrary()
+  const { user } = useAuth()
+  const { openAuth } = useAuthDialog()
 
   // reshuffled whenever the library changes, stable across re-renders
   const quickPicks = useMemo(
@@ -21,6 +25,13 @@ export function DashboardPage() {
         .slice(0, QUICK_PICK_COUNT)
         .map((index) => tracks[index]),
     [tracks]
+  )
+
+  const signInAction = (
+    <Button variant="outline" onClick={() => openAuth("sign-in")}>
+      <LogIn />
+      Sign in
+    </Button>
   )
 
   return (
@@ -36,18 +47,22 @@ export function DashboardPage() {
           layout="rail"
           playlists={playlists}
           emptyAction={
-            <PlaylistForm
-              submitLabel="Create playlist"
-              onSubmit={async (values) => {
-                await createPlaylist(values)
-              }}
-              trigger={
-                <Button variant="outline">
-                  <Plus />
-                  New playlist
-                </Button>
-              }
-            />
+            user ? (
+              <PlaylistForm
+                submitLabel="Create playlist"
+                onSubmit={async (values) => {
+                  await createPlaylist(values)
+                }}
+                trigger={
+                  <Button variant="outline">
+                    <Plus />
+                    New playlist
+                  </Button>
+                }
+              />
+            ) : (
+              signInAction
+            )
           }
         />
       </section>
@@ -61,7 +76,13 @@ export function DashboardPage() {
         </SectionHeader>
         <QuickPicksList
           tracks={quickPicks}
-          emptyAction={<Button render={<Link to="/upload" />}>Upload audio</Button>}
+          emptyAction={
+            user ? <Button render={<Link to="/upload" />}>Upload audio</Button> : signInAction
+          }
+          emptyTitle={user ? undefined : "Sign in to see your quick picks"}
+          emptyDescription={
+            user ? undefined : "Your library stays private and appears here after you sign in."
+          }
         />
       </section>
     </div>

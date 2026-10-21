@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
-import { CircleAlert, LoaderCircle } from "lucide-react"
+import { LoaderCircle } from "lucide-react"
 import { getAudio, type AudioResponse } from "@/api/audio"
 import { AudioCover } from "@/components/shared"
+import { notify } from "@/components/ui/notification-toast"
 import {
   Dialog,
   DialogContent,
@@ -39,7 +40,6 @@ type TrackDetailsDialogProps = {
 type DetailState = {
   id: string
   detail: AudioResponse | null
-  error: string | null
 }
 
 function formatBytes(bytes?: number | null) {
@@ -67,15 +67,12 @@ export function TrackDetailsDialog({ track, open, onOpenChange }: TrackDetailsDi
 
     getAudio(track.id)
       .then((audio) => {
-        if (!cancelled) setLoaded({ id: track.id, detail: audio, error: null })
+        if (!cancelled) setLoaded({ id: track.id, detail: audio })
       })
       .catch((cause: unknown) => {
         if (!cancelled) {
-          setLoaded({
-            id: track.id,
-            detail: null,
-            error: cause instanceof Error ? cause.message : "Could not load details",
-          })
+          setLoaded({ id: track.id, detail: null })
+          notify.error(cause instanceof Error ? cause.message : "Could not load details")
         }
       })
 
@@ -87,7 +84,6 @@ export function TrackDetailsDialog({ track, open, onOpenChange }: TrackDetailsDi
   const current = open && loaded?.id === track.id ? loaded : null
   const detail = current?.detail ?? null
   const loading = open && !current
-  const error = current?.error ?? null
 
   function handleOpenChange(nextOpen: boolean) {
     // Keep the loaded detail cached: the sheet keeps the exact same height on
@@ -124,11 +120,6 @@ export function TrackDetailsDialog({ track, open, onOpenChange }: TrackDetailsDi
     <p className="flex items-center gap-2 text-xs text-muted-foreground">
       <LoaderCircle className="size-3.5 animate-spin" />
       Loading details...
-    </p>
-  ) : error ? (
-    <p className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-      <CircleAlert className="size-3.5" />
-      {error}
     </p>
   ) : (
     <div className="flex flex-col gap-2 text-sm">

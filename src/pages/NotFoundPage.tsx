@@ -10,7 +10,7 @@ export function NotFoundPage() {
       title="Page not found"
       description="That link does not exist in Sonetopia."
       action={
-        <Button variant="outline" render={<Link to="/dashboard" />}>
+        <Button variant="outline" render={<Link to="/" />}>
           Back to dashboard
         </Button>
       }

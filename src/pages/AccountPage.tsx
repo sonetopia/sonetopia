@@ -1,8 +1,6 @@
 import { useState, type FormEvent } from "react"
 import {
   CalendarDays,
-  CircleAlert,
-  CircleCheck,
   HardDrive,
   ShieldCheck,
   UserRound,
@@ -18,6 +16,7 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { notify } from "@/components/ui/notification-toast"
 import { PageHeader } from "@/components/shared"
 import { useAuth } from "@/lib/auth"
 import { Field, FieldLabel } from "@/components/ui/field"
@@ -58,8 +57,6 @@ export function AccountPage() {
     confirmPassword: "",
   })
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
-  const [saved, setSaved] = useState(false)
 
   const initials = (user?.username ?? "Account")
     .split(" ")
@@ -76,8 +73,6 @@ export function AccountPage() {
 
   function updateField(field: keyof typeof values, value: string) {
     setValues((prev) => ({ ...prev, [field]: value }))
-    setError("")
-    setSaved(false)
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -85,18 +80,16 @@ export function AccountPage() {
     if (saving || !isDirty) return
 
     if (values.password && !values.currentPassword.trim()) {
-      setError("Enter your current password to set a new password.")
+      notify.error("Enter your current password to set a new password.")
       return
     }
 
     if (values.password !== values.confirmPassword) {
-      setError("Passwords do not match.")
+      notify.error("Passwords do not match.")
       return
     }
 
     setSaving(true)
-    setError("")
-    setSaved(false)
 
     try {
       const result = await updateProfile({
@@ -107,7 +100,7 @@ export function AccountPage() {
       })
 
       if (!result.ok) {
-        setError(result.error)
+        notify.error(result.error)
         return
       }
 
@@ -119,7 +112,7 @@ export function AccountPage() {
         password: "",
         confirmPassword: "",
       }))
-      setSaved(true)
+      notify.success("Your profile has been updated.")
     } finally {
       setSaving(false)
     }
@@ -139,12 +132,12 @@ export function AccountPage() {
           <form id="account-profile-form" onSubmit={handleSubmit}>
             <CardContent className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field className="flex flex-col gap-1.5">
+                <Field>
                   <FieldLabel htmlFor="account-username">Username</FieldLabel>
                   <Input
                     id="account-username"
                     value={values.username}
-                    autoComplete="username"
+                    autoComplete="off"
                     minLength={3}
                     maxLength={50}
                     required
@@ -153,13 +146,13 @@ export function AccountPage() {
                   />
                 </Field>
 
-                <Field className="flex flex-col gap-1.5">
+                <Field>
                   <FieldLabel htmlFor="account-email">Email</FieldLabel>
                   <Input
                     id="account-email"
                     type="email"
                     value={values.email}
-                    autoComplete="email"
+                    autoComplete="off"
                     maxLength={255}
                     required
                     disabled={saving}
@@ -174,13 +167,13 @@ export function AccountPage() {
                 Leave the fields empty to keep your current password.
               </p>
 
-              <Field className="flex flex-col gap-1.5">
+              <Field>
                 <FieldLabel htmlFor="account-current-password">Current password</FieldLabel>
                 <Input
                   id="account-current-password"
                   type="password"
                   value={values.currentPassword}
-                  autoComplete="current-password"
+                  autoComplete="off"
                   required={values.password.length > 0 || values.confirmPassword.length > 0}
                   disabled={saving}
                   onChange={(event) => updateField("currentPassword", event.target.value)}
@@ -188,13 +181,13 @@ export function AccountPage() {
               </Field>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field className="flex flex-col gap-1.5">
+                <Field>
                   <FieldLabel htmlFor="account-password">New password</FieldLabel>
                   <Input
                     id="account-password"
                     type="password"
                     value={values.password}
-                    autoComplete="new-password"
+                    autoComplete="off"
                     minLength={6}
                     maxLength={100}
                     disabled={saving}
@@ -202,7 +195,7 @@ export function AccountPage() {
                   />
                 </Field>
 
-                <Field className="flex flex-col gap-1.5">
+                <Field>
                   <FieldLabel htmlFor="account-confirm-password">Confirm new password</FieldLabel>
                   <Input
                     id="account-confirm-password"
@@ -217,22 +210,6 @@ export function AccountPage() {
                 </Field>
               </div>
 
-              {error ? (
-                <p
-                  role="alert"
-                  className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-xs text-destructive"
-                >
-                  <CircleAlert className="size-3.5 shrink-0" />
-                  {error}
-                </p>
-              ) : null}
-
-              {saved ? (
-                <p className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-xs text-primary">
-                  <CircleCheck className="size-3.5 shrink-0" />
-                  Your profile has been updated.
-                </p>
-              ) : null}
             </CardContent>
             <CardFooter className="mt-4 justify-end">
               <Button type="submit" form="account-profile-form" disabled={saving || !isDirty}>

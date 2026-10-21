@@ -2,13 +2,9 @@ import { Link, Outlet } from "react-router-dom"
 import { Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Brand } from "@/components/shared"
-import { useAuth } from "@/lib/auth"
 import { useTheme } from "@/lib/theme"
-import { useIsMobile } from "@/hooks/use-mobile"
-import { cn } from "@/lib/utils"
 
 export function PublicShell() {
-  const { user } = useAuth()
   const { dark, toggle } = useTheme()
 
   return (
@@ -25,23 +21,7 @@ export function PublicShell() {
             >
               {dark ? <Sun /> : <Moon />}
             </Button>
-            {user ? (
-              <Button render={<Link to="/dashboard" />}>
-                Open app
-              </Button>
-            ) : (
-              <>
-                <Button className="py-4" variant="ghost" render={<Link to="/login" />}>
-                  Sign in
-                </Button>
-                <Button className={cn(
-                  "py-4",
-                  useIsMobile() ? "" : "px-4"
-                )} render={<Link to="/register" />}>
-                  Get started
-                </Button>
-              </>
-            )}
+            <Button render={<Link to="/" />}>Open app</Button>
           </div>
         </div>
       </header>

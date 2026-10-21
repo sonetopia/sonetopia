@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type ReactElement } from "react"
-import { CircleAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { notify } from "@/components/ui/notification-toast"
 import {
   Dialog,
   DialogContent,
@@ -35,7 +35,6 @@ export function PlaylistForm({
     initial ?? { name: "" }
   )
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const isValid = values.name.trim().length > 0
 
   function handleOpenChange(next: boolean) {
@@ -43,7 +42,6 @@ export function PlaylistForm({
     setOpen(next)
     if (next) {
       setValues(initial ?? { name: "" })
-      setError(null)
     }
   }
 
@@ -52,12 +50,11 @@ export function PlaylistForm({
     if (!isValid || saving) return
 
     setSaving(true)
-    setError(null)
     try {
       await onSubmit({ name: values.name.trim() })
       setOpen(false)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not save the playlist")
+      notify.error(cause instanceof Error ? cause.message : "Could not save the playlist")
     } finally {
       setSaving(false)
     }
@@ -83,13 +80,6 @@ export function PlaylistForm({
               onChange={(event) => setValues((prev) => ({ ...prev, name: event.target.value }))}
             />
           </Field>
-
-          {error ? (
-            <p className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-              <CircleAlert className="size-3.5 shrink-0" />
-              {error}
-            </p>
-          ) : null}
 
           <DialogFooter>
             <Button
