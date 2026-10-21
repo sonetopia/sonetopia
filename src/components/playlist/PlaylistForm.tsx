@@ -68,7 +68,7 @@ export function PlaylistForm({
           <DialogTitle>{initial ? "Edit playlist" : "New playlist"}</DialogTitle>
         </DialogHeader>
         <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-          <Field className="flex flex-col gap-1.5">
+          <Field>
             <FieldLabel htmlFor="playlist-name">Name</FieldLabel>
             <Input
               id="playlist-name"

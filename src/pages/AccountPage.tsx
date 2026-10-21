@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
 import {
   CalendarDays,
   HardDrive,
@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -18,23 +17,10 @@ import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { notify } from "@/components/ui/notification-toast"
 import { PageHeader } from "@/components/shared"
+import { getStorageUsage } from "@/api/auth"
 import { useAuth } from "@/lib/auth"
+import { formatBytes, type StorageUsage } from "@/lib/storage"
 import { Field, FieldLabel } from "@/components/ui/field"
-
-const STORAGE_UNITS = ["B", "KB", "MB", "GB", "TB"]
-
-function formatStorage(bytes?: number | null) {
-  if (bytes == null) return "Unknown"
-  if (bytes <= 0) return "0 MB"
-
-  let value = bytes
-  let unit = 0
-  while (value >= 1024 && unit < STORAGE_UNITS.length - 1) {
-    value /= 1024
-    unit += 1
-  }
-  return `${value.toFixed(unit > 1 ? 1 : 0)} ${STORAGE_UNITS[unit]}`
-}
 
 function formatDate(value?: string | null) {
   if (!value) return "Unknown"
@@ -57,6 +43,40 @@ export function AccountPage() {
     confirmPassword: "",
   })
   const [saving, setSaving] = useState(false)
+  const [storageState, setStorageState] = useState<{
+    userId?: string
+    usage: StorageUsage | null
+    error: string | null
+  }>({ usage: null, error: null })
+
+  const storageReady = storageState.userId === user?.id
+  const storage = storageReady ? storageState.usage : null
+  const storageLoading = Boolean(user?.id) && !storageReady
+  const storageError = storageReady ? storageState.error : null
+
+  useEffect(() => {
+    if (!user?.id) return
+
+    let cancelled = false
+
+    getStorageUsage()
+      .then((usage) => {
+        if (!cancelled) setStorageState({ userId: user.id, usage, error: null })
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) {
+          setStorageState({
+            userId: user.id,
+            usage: null,
+            error: cause instanceof Error ? cause.message : "Could not load storage usage",
+          })
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id])
 
   const initials = (user?.username ?? "Account")
     .split(" ")
@@ -209,13 +229,12 @@ export function AccountPage() {
                   />
                 </Field>
               </div>
-
+              <div className="text-end">
+                <Button type="submit" form="account-profile-form" disabled={saving || !isDirty}>
+                  {saving ? "Saving..." : "Save changes"}
+                </Button>
+              </div>
             </CardContent>
-            <CardFooter className="mt-4 justify-end">
-              <Button type="submit" form="account-profile-form" disabled={saving || !isDirty}>
-                {saving ? "Saving..." : "Save changes"}
-              </Button>
-            </CardFooter>
           </form>
         </Card>
 
@@ -249,7 +268,14 @@ export function AccountPage() {
                   <HardDrive className="size-4" />
                   Storage used
                 </dt>
-                <dd className="font-medium">{formatStorage(user?.storageUsed)}</dd>
+                <dd className="text-right font-medium">
+                  {storageLoading ? "Loading..." : storage ? formatBytes(storage.usedBytes) : "-"}
+                  {storage && !storage.unlimited && storage.maxBytes != null ? (
+                    <span className="ps-1 text-[11px] font-normal text-muted-foreground">
+                      of {formatBytes(storage.maxBytes)}
+                    </span>
+                  ) : null}
+                </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <dt className="flex items-center gap-2 text-muted-foreground">
@@ -268,6 +294,33 @@ export function AccountPage() {
                 </dd>
               </div>
             </dl>
+
+            {storage && !storage.unlimited && storage.maxBytes != null && storage.maxBytes > 0 ? (
+              <div className="space-y-1.5">
+                <div
+                  role="progressbar"
+                  aria-label="Storage usage"
+                  aria-valuemin={0}
+                  aria-valuemax={storage.maxBytes}
+                  aria-valuenow={Math.min(storage.usedBytes, storage.maxBytes)}
+                  className="h-1.5 overflow-hidden rounded-full bg-muted"
+                >
+                  <div
+                    className="h-full rounded-full bg-primary"
+                    style={{
+                      width: `${Math.min(100, (storage.usedBytes / storage.maxBytes) * 100)}%`,
+                    }}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {formatBytes(storage.remainingBytes)} available
+                </p>
+              </div>
+            ) : storage?.unlimited ? (
+              <p className="text-[11px] text-muted-foreground">Unlimited storage</p>
+            ) : storageError ? (
+              <p className="text-[11px] text-destructive">{storageError}</p>
+            ) : null}
           </CardContent>
         </Card>
       </div>

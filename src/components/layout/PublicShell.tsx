@@ -1,5 +1,5 @@
 import { Link, Outlet } from "react-router-dom"
-import { Moon, Sun } from "lucide-react"
+import { ArrowRight, Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Brand } from "@/components/shared"
 import { useTheme } from "@/lib/theme"
@@ -21,7 +21,7 @@ export function PublicShell() {
             >
               {dark ? <Sun /> : <Moon />}
             </Button>
-            <Button render={<Link to="/" />}>Open app</Button>
+            <Button render={<Link to="/" />}>Go to app <ArrowRight /></Button>
           </div>
         </div>
       </header>

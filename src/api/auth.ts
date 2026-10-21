@@ -1,5 +1,6 @@
 import { requestRoot } from "@/api/client"
 import type { AuthUser } from "@/lib/session"
+import type { StorageUsage } from "@/lib/storage"
 
 export type UserResponse = AuthUser
 
@@ -60,6 +61,12 @@ export async function getCurrentUser() {
   const user = await requestRoot<UserResponse>("/me")
   if (!user) throw new Error("Could not load your account")
   return user
+}
+
+export async function getStorageUsage(options?: { notifyUnauthorized?: boolean }) {
+  const usage = await requestRoot<StorageUsage>("/me/storage", undefined, options)
+  if (!usage) throw new Error("Could not load storage usage")
+  return usage
 }
 
 export async function updateCurrentUser(input: UpdateUserInput) {

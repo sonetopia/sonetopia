@@ -81,7 +81,7 @@ export function PlaylistList({ playlists, emptyAction, layout = "grid" }: Playli
   return (
     <div
       className={cn(
-        "py-1 scrollbar-thin ps-[1px]",
+        "py-1 scrollbar-none ps-[1px]",
         layout === "rail"
           ? "flex gap-3 overflow-x-auto"
           : "grid gap-3 sm:grid-cols-4 2xl:grid-cols-6"

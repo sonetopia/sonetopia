@@ -96,7 +96,7 @@ export function LandingPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const primaryButton = (
     <Button size="lg" render={<Link to="/" />}>
-      Open the app
+      Go the app
       <ArrowRight />
     </Button>
   )

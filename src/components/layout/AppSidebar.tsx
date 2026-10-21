@@ -136,19 +136,6 @@ export function AppSidebar() {
         ) : null}
       </SidebarContent>
       <SidebarFooter>
-        <SidebarMenu className="mb-0">
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="About this project"
-              isActive={pathname === "/about"}
-              onClick={closeMobile}
-              render={<NavLink to="/about" />}
-            >
-              <Info />
-              <span>About this project</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
         <NavUser />
       </SidebarFooter>
       <SidebarRail />

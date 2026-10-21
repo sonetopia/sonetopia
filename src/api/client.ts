@@ -27,6 +27,7 @@ export class ApiError extends Error {
 
 type RequestOptions = {
   authenticated?: boolean
+  notifyUnauthorized?: boolean
 }
 
 async function send<T>(
@@ -53,7 +54,11 @@ async function send<T>(
   }
 
   if (!response.ok) {
-    if (response.status === 401 && options.authenticated !== false) {
+    if (
+      response.status === 401 &&
+      options.authenticated !== false &&
+      options.notifyUnauthorized !== false
+    ) {
       notifyUnauthorized()
     }
     throw new ApiError(body?.errors || `Request failed (${response.status})`, response.status)

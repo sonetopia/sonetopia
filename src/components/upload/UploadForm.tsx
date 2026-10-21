@@ -26,9 +26,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { getStorageUsage } from "@/api/auth"
+import { useAuth } from "@/lib/auth"
 import { KIND_OPTIONS, useLibrary, type AudioKind, type UploadInput } from "@/lib/library"
-
-const MAX_SIZE = 200 * 1024 * 1024
+import {
+  AUDIO_ACCEPT,
+  COVER_ACCEPT,
+  audioFileError,
+  coverFileError,
+  storageQuotaError,
+} from "@/lib/storage"
 
 type Draft = {
   id: string
@@ -47,6 +54,7 @@ const fileSizeMb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`
 
 export function UploadForm() {
   const { addUploads } = useLibrary()
+  const { user } = useAuth()
   const inputRef = useRef<HTMLInputElement>(null)
   const dragDepth = useRef(0)
   const [drafts, setDrafts] = useState<Draft[]>([])
@@ -59,12 +67,9 @@ export function UploadForm() {
     const accepted: Draft[] = []
 
     for (const file of files) {
-      if (!file.type.startsWith("audio/")) {
-        rejected.push(`${file.name} - not an audio file`)
-        continue
-      }
-      if (file.size > MAX_SIZE) {
-        rejected.push(`${file.name} - larger than 200 MB`)
+      const error = audioFileError(file)
+      if (error) {
+        rejected.push(error)
         continue
       }
       accepted.push({
@@ -160,6 +165,22 @@ export function UploadForm() {
     if (inputRef.current) inputRef.current.value = ""
   }
 
+  function chooseCover(id: string, input: HTMLInputElement) {
+    const file = input.files?.[0] ?? null
+    input.value = ""
+    if (!file) {
+      applyField(id, { cover: null })
+      return
+    }
+
+    const error = coverFileError(file)
+    if (error) {
+      notify.error(error)
+      return
+    }
+    applyField(id, { cover: file })
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (drafts.length === 0 || saving) return
@@ -174,8 +195,22 @@ export function UploadForm() {
       cover: draft.cover ?? undefined,
     }))
 
+    const neededBytes = drafts.reduce(
+      (total, draft) => total + draft.file.size + (draft.cover?.size ?? 0),
+      0
+    )
+
     setSaving(true)
     try {
+      if (user) {
+        const usage = await getStorageUsage({ notifyUnauthorized: false }).catch(() => null)
+        const quotaError = usage ? storageQuotaError(usage, neededBytes) : null
+        if (quotaError) {
+          notify.error(quotaError)
+          return
+        }
+      }
+
       const count = await addUploads(inputs)
       setDrafts([])
       setLinkAllId(null)
@@ -223,7 +258,7 @@ export function UploadForm() {
         <input
           ref={inputRef}
           type="file"
-          accept=".mp3,.wav,.m4a,.aac,.ogg,.flac,audio/mpeg,audio/wav,audio/mp4,audio/aac,audio/ogg,audio/flac"
+          accept={AUDIO_ACCEPT}
           multiple
           className="hidden"
           onChange={(event) => addFiles(Array.from(event.target.files ?? []))}
@@ -365,16 +400,14 @@ export function UploadForm() {
                           </Field>
                         </div>
                       </FieldGroup>
-                      <Field className="flex flex-col gap-1.5 sm:col-span-2">
+                      <Field className="sm:col-span-2">
                         <FieldLabel htmlFor={`cover-${draft.id}`}>Cover image</FieldLabel>
                         <input
                           id={`cover-${draft.id}`}
                           type="file"
-                          accept="image/png,image/jpeg,image/webp,image/gif"
+                          accept={COVER_ACCEPT}
                           className="hidden"
-                          onChange={(event) =>
-                            applyField(draft.id, { cover: event.target.files?.[0] ?? null })
-                          }
+                          onChange={(event) => chooseCover(draft.id, event.currentTarget)}
                         />
                         <div className="flex min-w-0 items-center gap-2">
                           <Button

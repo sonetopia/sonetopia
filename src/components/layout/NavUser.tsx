@@ -1,4 +1,4 @@
-import { BadgeCheckIcon, ChevronsUpDown, LogIn, LogOut, Moon, Sun } from "lucide-react"
+import { BadgeCheckIcon, ChevronsUpDown, Info, LogIn, LogOut, Moon, Sun } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useAuthDialog } from "@/components/auth/AuthDialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -77,7 +77,7 @@ export function NavUser() {
             <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-56"
+            className="w-50"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}
@@ -108,6 +108,11 @@ export function NavUser() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate("/about")}>
+              <Info
+              />
+              About Sonetopia
+            </DropdownMenuItem>
             <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
               <LogOut />
               Sign out

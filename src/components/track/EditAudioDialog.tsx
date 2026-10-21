@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react"
 import { ImagePlus } from "lucide-react"
-import { getAudio } from "@/api/audio"
+import { getAudio, getAudioCover } from "@/api/audio"
+import { getStorageUsage } from "@/api/auth"
 import { Button } from "@/components/ui/button"
 import { notify } from "@/components/ui/notification-toast"
 import {
@@ -25,6 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { KIND_OPTIONS, useLibrary, type AudioKind, type Track } from "@/lib/library"
+import { COVER_ACCEPT, coverFileError, storageQuotaError } from "@/lib/storage"
 
 const FORM_ID = "edit-audio-form"
 
@@ -92,6 +94,22 @@ export function EditAudioDialog({ track, open, onOpenChange }: EditAudioDialogPr
 
     setSaving(true)
     try {
+      if (cover) {
+        const [usage, previousCoverSize] = await Promise.all([
+          getStorageUsage({ notifyUnauthorized: false }).catch(() => null),
+          getAudioCover(track.id)
+            .then((current) => current.fileSize ?? 0)
+            .catch(() => 0),
+        ])
+        const quotaError = usage
+          ? storageQuotaError(usage, Math.max(0, cover.size - previousCoverSize))
+          : null
+        if (quotaError) {
+          notify.error(quotaError)
+          return
+        }
+      }
+
       await updateTrack(track.id, {
         title: title.trim(),
         type: kind,
@@ -107,6 +125,22 @@ export function EditAudioDialog({ track, open, onOpenChange }: EditAudioDialogPr
     } finally {
       setSaving(false)
     }
+  }
+
+  function chooseCover(input: HTMLInputElement) {
+    const file = input.files?.[0] ?? null
+    input.value = ""
+    if (!file) {
+      setCover(null)
+      return
+    }
+
+    const error = coverFileError(file)
+    if (error) {
+      notify.error(error)
+      return
+    }
+    setCover(file)
   }
 
   return (
@@ -199,9 +233,9 @@ export function EditAudioDialog({ track, open, onOpenChange }: EditAudioDialogPr
               id="edit-cover"
               ref={coverRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
+              accept={COVER_ACCEPT}
               className="hidden"
-              onChange={(event) => setCover(event.target.files?.[0] ?? null)}
+              onChange={(event) => chooseCover(event.currentTarget)}
             />
             <div className="flex min-w-0 items-center gap-2">
               <Button
