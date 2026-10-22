@@ -46,8 +46,9 @@ function App() {
                       <Route path="/playlists/:id" element={<PlaylistDetailPage />} />
                       <Route path="/queue" element={<QueuePage />} />
                       <Route path="/upload" element={<UploadPage />} />
-                      <Route path="*" element={<NotFoundPage />} />
                     </Route>
+
+                    <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </BrowserRouter>
               </TooltipProvider>

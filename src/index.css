@@ -167,3 +167,67 @@ body {
 @apply bg-background text-foreground;
 }
 }
+
+@keyframes not-found-drift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(14px, -18px, 0);
+  }
+}
+
+@keyframes not-found-shooting-star {
+  0%,
+  78% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(-32deg);
+  }
+  80% {
+    opacity: 1;
+  }
+  91% {
+    opacity: 1;
+    transform: translate3d(120vw, -75vw, 0) rotate(-32deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(135vw, -84.375vw, 0) rotate(-32deg);
+  }
+}
+
+.not-found-dot {
+  position: absolute;
+  border-radius: 999px;
+  background: #fff;
+}
+
+.not-found-dot--drift {
+  animation: not-found-drift 18s ease-in-out infinite alternate;
+}
+
+.not-found-shooting-star {
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 15%) 40%, #fff);
+  filter: drop-shadow(0 0 3px rgb(255 255 255 / 45%));
+  transform-origin: right center;
+  animation-name: not-found-shooting-star;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.not-found-shooting-star::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -1px;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 0 7px 2px rgb(255 255 255 / 45%);
+  transform: translateY(-50%);
+}
