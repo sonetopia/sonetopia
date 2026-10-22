@@ -69,7 +69,7 @@ export function SeekSlider({
         data-slot="seek-tooltip"
         aria-hidden
         className={cn(
-          "pointer-events-none absolute bottom-[calc(100%+2px)] z-10 -translate-x-1/2 rounded-md bg-foreground px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap tabular-nums text-background shadow-sm transition-opacity duration-150",
+          "pointer-events-none absolute bottom-[calc(100%+7px)] z-10 -translate-x-1/2 rounded-sm bg-foreground px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap tabular-nums text-background shadow-sm transition-opacity duration-150",
           visible ? "opacity-100" : "opacity-0"
         )}
         style={{ left: preview.left }}
