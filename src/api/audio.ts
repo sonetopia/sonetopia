@@ -41,6 +41,26 @@ export type UpdateAudioInput = AudioFields & {
   file?: File
 }
 
+export type FetchedAudioResponse = {
+  tempId: string
+  title: string | null
+  author: string | null
+  album: string | null
+  year: number | null
+  duration: number | null
+  mimeType: string | null
+  fileSize: number | null
+}
+
+export type CreateAudioFromTempInput = {
+  tempId: string
+  title: string
+  type?: string
+  author?: string
+  album?: string
+  year?: number
+}
+
 function toFormData(input: AudioFields & { file?: File }) {
   const form = new FormData()
   form.append("title", input.title)
@@ -72,6 +92,26 @@ export async function getAudioCover(id: string) {
 export async function createAudio(input: CreateAudioInput) {
   const created = await request<AudioResponse>("/audio", { method: "POST", body: toFormData(input) })
   if (!created) throw new Error("Upload failed")
+  return created
+}
+
+export async function fetchAudioByUrl(url: string) {
+  const fetched = await request<FetchedAudioResponse>("/audio/fetch", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  })
+  if (!fetched) throw new Error("Could not fetch audio from that URL")
+  return fetched
+}
+
+export async function createAudioFromTemp(input: CreateAudioFromTempInput) {
+  const created = await request<AudioResponse>("/audio", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  })
+  if (!created) throw new Error("Could not save the fetched audio")
   return created
 }
 

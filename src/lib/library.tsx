@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 import {
   createAudio,
+  createAudioFromTemp,
   deleteAudio,
   getAudio,
   listAudio,
@@ -181,6 +182,15 @@ export type UploadInput = {
   cover?: File
 }
 
+export type UrlUploadInput = {
+  tempId: string
+  title: string
+  artist: string
+  kind: AudioKind
+  album?: string
+  year?: number
+}
+
 type LibraryValue = {
   tracks: Track[]
   playlists: Playlist[]
@@ -189,6 +199,7 @@ type LibraryValue = {
   trackById: (id: string) => Track | undefined
   tracksByIds: (ids: string[]) => Track[]
   addUploads: (inputs: UploadInput[]) => Promise<number>
+  addFetchedUpload: (input: UrlUploadInput) => Promise<void>
   removeTrack: (id: string) => Promise<void>
   setTrackDuration: (id: string, duration: number) => void
   updateTrack: (id: string, input: UpdateAudioInput) => Promise<void>
@@ -268,6 +279,19 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     }
     if (failures.length > 0) throw new Error(failures.join("; "))
     return created.length
+  }, [])
+
+  const addFetchedUpload = useCallback(async (input: UrlUploadInput) => {
+    const audio = await createAudioFromTemp({
+      tempId: input.tempId,
+      title: input.title.trim(),
+      type: input.kind,
+      author: input.artist.trim() || undefined,
+      album: input.album?.trim() || undefined,
+      year: input.year,
+    })
+    const track = await trackFromDetail(await getAudio(audio.id))
+    setTracks((prev) => [track, ...prev])
   }, [])
 
   const removeTrack = useCallback(async (id: string) => {
@@ -383,6 +407,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       trackById,
       tracksByIds,
       addUploads,
+      addFetchedUpload,
       removeTrack,
       setTrackDuration,
       updateTrack,
@@ -402,6 +427,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       trackById,
       tracksByIds,
       addUploads,
+      addFetchedUpload,
       removeTrack,
       setTrackDuration,
       updateTrack,

@@ -5,10 +5,12 @@ import {
   FileAudio,
   HardDriveUpload,
   ImagePlus,
+  Link2,
   Trash2,
   Upload,
   X,
 } from "lucide-react"
+import { fetchAudioByUrl } from "@/api/audio"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -28,7 +30,13 @@ import {
 } from "@/components/ui/select"
 import { getStorageUsage } from "@/api/auth"
 import { useAuth } from "@/lib/auth"
-import { KIND_OPTIONS, useLibrary, type AudioKind, type UploadInput } from "@/lib/library"
+import {
+  formatDuration,
+  KIND_OPTIONS,
+  useLibrary,
+  type AudioKind,
+  type UploadInput,
+} from "@/lib/library"
 import {
   AUDIO_ACCEPT,
   COVER_ACCEPT,
@@ -49,11 +57,34 @@ type Draft = {
   open: boolean
 }
 
+type FetchedDraft = {
+  tempId: string
+  sourceUrl: string
+  title: string
+  author: string
+  album: string
+  year: string
+  kind: AudioKind
+  duration: number | null
+  fileSize: number | null
+}
+
 const stripExtension = (name: string) => name.replace(/\.[^.]+$/, "")
 const fileSizeMb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`
 
+function urlError(value: string) {
+  try {
+    const url = new URL(value)
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? null
+      : "Only HTTP and HTTPS URLs are supported."
+  } catch {
+    return "Enter a valid URL."
+  }
+}
+
 export function UploadForm() {
-  const { addUploads } = useLibrary()
+  const { addFetchedUpload, addUploads } = useLibrary()
   const { user } = useAuth()
   const inputRef = useRef<HTMLInputElement>(null)
   const dragDepth = useRef(0)
@@ -61,6 +92,9 @@ export function UploadForm() {
   const [linkAllId, setLinkAllId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [dragActive, setDragActive] = useState(false)
+  const [url, setUrl] = useState("")
+  const [fetched, setFetched] = useState<FetchedDraft | null>(null)
+  const [fetching, setFetching] = useState(false)
 
   function addFiles(files: File[]) {
     const rejected: string[] = []
@@ -181,6 +215,80 @@ export function UploadForm() {
     applyField(id, { cover: file })
   }
 
+  function updateFetched(patch: Partial<FetchedDraft>) {
+    setFetched((prev) => (prev ? { ...prev, ...patch } : prev))
+  }
+
+  async function handleFetchUrl() {
+    if (fetching || saving) return
+
+    const value = url.trim()
+    const error = urlError(value)
+    if (error) {
+      notify.error(error)
+      return
+    }
+
+    setFetching(true)
+    try {
+      const audio = await fetchAudioByUrl(value)
+      setFetched({
+        tempId: audio.tempId,
+        sourceUrl: value,
+        title: audio.title?.trim() || "Untitled",
+        author: audio.author?.trim() ?? "",
+        album: audio.album?.trim() ?? "",
+        year: audio.year != null ? String(audio.year) : "",
+        kind: "music",
+        duration: audio.duration,
+        fileSize: audio.fileSize,
+      })
+      notify.success("Audio fetched.")
+    } catch (cause) {
+      notify.error(cause instanceof Error ? cause.message : "Could not fetch from the provided URL")
+    } finally {
+      setFetching(false)
+    }
+  }
+
+  async function handleSaveFetched() {
+    if (!fetched || fetching || saving) return
+
+    const title = fetched.title.trim()
+    if (!title) {
+      notify.error("Title is required.")
+      return
+    }
+
+    setSaving(true)
+    try {
+      if (user) {
+        const usage = await getStorageUsage({ notifyUnauthorized: false }).catch(() => null)
+        const quotaError = usage ? storageQuotaError(usage, fetched.fileSize ?? 0) : null
+        if (quotaError) {
+          notify.error(quotaError)
+          return
+        }
+      }
+
+      await addFetchedUpload({
+        tempId: fetched.tempId,
+        title,
+        artist: fetched.author,
+        kind: fetched.kind,
+        album: fetched.album.trim() || undefined,
+        year: fetched.year.trim() ? Number(fetched.year) : undefined,
+      })
+      setFetched(null)
+      setUrl("")
+      notify.success("Audio added to your library.")
+    } catch (cause) {
+      notify.error(cause instanceof Error ? cause.message : "Could not save the fetched audio")
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (drafts.length === 0 || saving) return
@@ -224,7 +332,158 @@ export function UploadForm() {
   }
 
   return (
-    <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+    <div className="flex flex-col gap-5">
+      <section className="rounded-xl border bg-card">
+        <div className="flex flex-col gap-3 p-4">
+          <div className="flex items-center gap-3">
+            <span className="hidden size-9 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground lg:grid">
+              <Link2 className="size-4" />
+            </span>
+            <div className="min-w-0 flex flex-col gap-1">
+              <p className="text-sm font-medium">Import from URL</p>
+              <p className="text-xs text-muted-foreground">
+                This feature utilizes <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" rel="noopener noreferrer" className="text-foreground underline hover:no-underline">yt-dlp</a> as a third-party library to fetch the audio file from the provided URL. Some websites may not be supported.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Input
+              type="url"
+              inputMode="url"
+              maxLength={2048}
+              placeholder="https://www.example.com/audio.mp3"
+              value={url}
+              disabled={fetching || saving}
+              onChange={(event) => setUrl(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault()
+                  void handleFetchUrl()
+                }
+              }}
+            />
+            <Button
+              type="button"
+              variant="default"
+              disabled={fetching || saving || url.trim().length === 0}
+              onClick={handleFetchUrl}
+            >
+              {fetching ? "Fetching..." : "Fetch audio"}
+            </Button>
+          </div>
+        </div>
+
+        {fetched ? (
+          <div className="flex flex-col gap-3 border-t bg-muted/20 p-4">
+            <div className="flex items-center gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+                <FileAudio className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium" title={fetched.sourceUrl}>
+                  {fetched.title || "Fetched audio"}
+                </p>
+                <p className="truncate text-[11px] text-muted-foreground">
+                  {fetched.fileSize != null ? fileSizeMb(fetched.fileSize) : "Size unknown"} ·{" "}
+                  {formatDuration(fetched.duration ?? undefined)}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Discard fetched audio"
+                disabled={saving}
+                onClick={() => setFetched(null)}
+              >
+                <X />
+              </Button>
+            </div>
+
+            <Field>
+              <FieldLabel htmlFor="url-import-title">Title</FieldLabel>
+              <Input
+                id="url-import-title"
+                value={fetched.title}
+                maxLength={200}
+                disabled={saving}
+                onChange={(event) => updateFetched({ title: event.target.value })}
+              />
+            </Field>
+            <FieldGroup>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor="url-import-author">Artist / creator</FieldLabel>
+                  <Input
+                    id="url-import-author"
+                    value={fetched.author}
+                    maxLength={80}
+                    disabled={saving}
+                    onChange={(event) => updateFetched({ author: event.target.value })}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="url-import-album">Album</FieldLabel>
+                  <Input
+                    id="url-import-album"
+                    value={fetched.album}
+                    maxLength={120}
+                    disabled={saving}
+                    onChange={(event) => updateFetched({ album: event.target.value })}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="url-import-year">Year</FieldLabel>
+                  <Input
+                    id="url-import-year"
+                    type="number"
+                    inputMode="numeric"
+                    min={1000}
+                    max={9999}
+                    value={fetched.year}
+                    disabled={saving}
+                    onChange={(event) => updateFetched({ year: event.target.value })}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="url-import-kind">Audio type</FieldLabel>
+                  <Select
+                    items={KIND_OPTIONS}
+                    value={fetched.kind}
+                    onValueChange={(value) => updateFetched({ kind: value as AudioKind })}
+                  >
+                    <SelectTrigger id="url-import-kind" className="w-full" disabled={saving}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {KIND_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </Field>
+              </div>
+            </FieldGroup>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                disabled={saving || fetching || fetched.title.trim().length === 0}
+                onClick={handleSaveFetched}
+              >
+                <Upload />
+                {saving ? "Saving..." : "Save to library"}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
       <div
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
@@ -444,6 +703,7 @@ export function UploadForm() {
               : "Save to library"}
         </Button>
       </div>
-    </form>
+      </form>
+    </div>
   )
 }
