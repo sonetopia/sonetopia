@@ -44,6 +44,7 @@ import {
   coverFileError,
   storageQuotaError,
 } from "@/lib/storage"
+import { useNavigate } from "react-router-dom"
 
 type Draft = {
   id: string
@@ -87,6 +88,7 @@ function urlError(value: string) {
 export function UploadForm() {
   const { addFetchedUpload, addUploads } = useLibrary()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
   const dragDepth = useRef(0)
   const [drafts, setDrafts] = useState<Draft[]>([])
@@ -286,7 +288,12 @@ export function UploadForm() {
       })
       setFetched(null)
       setUrl("")
-      notify.success("Audio added to your library.")
+      notify.success("Audio added to your library.", undefined, {
+        children: "View",
+        onClick: () => {
+          navigate("/library")
+        },
+      })
     } catch (cause) {
       notify.error(cause instanceof Error ? cause.message : "Could not save the fetched audio")
     } finally {
@@ -327,7 +334,12 @@ export function UploadForm() {
       const count = await addUploads(inputs)
       setDrafts([])
       setLinkAllId(null)
-      notify.success(`${count} file${count === 1 ? "" : "s"} added to your library.`)
+      notify.success(`${count} file${count === 1 ? "" : "s"} added to your library.`, undefined, {
+        children: "View",
+        onClick: () => {
+          navigate("/library")
+        },
+      })
       if (inputRef.current) inputRef.current.value = ""
     } catch (cause) {
       notify.error(cause instanceof Error ? cause.message : "Upload failed")

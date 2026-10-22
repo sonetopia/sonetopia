@@ -188,7 +188,9 @@ function ToastList() {
           <ToastTitle />
           <ToastDescription />
         </div>
-        <ToastAction />
+        {toastItem.actionProps ? (
+          <ToastAction {...toastItem.actionProps} />
+        ) : null}
         <ToastClose />
       </ToastContent>
     </Toast>
