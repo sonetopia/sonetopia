@@ -1,7 +1,6 @@
 import { Link, NavLink, useLocation } from "react-router-dom"
 import {
   HardDriveUpload,
-  Info,
   LayoutDashboard,
   Library,
   ListMusic,

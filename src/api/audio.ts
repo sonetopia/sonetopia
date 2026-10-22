@@ -50,6 +50,8 @@ export type FetchedAudioResponse = {
   duration: number | null
   mimeType: string | null
   fileSize: number | null
+  coverMimeType: string | null
+  coverFileSize: number | null
 }
 
 export type CreateAudioFromTempInput = {
@@ -95,11 +97,11 @@ export async function createAudio(input: CreateAudioInput) {
   return created
 }
 
-export async function fetchAudioByUrl(url: string) {
+export async function fetchAudioByUrl(url: string, withThumbnail: boolean) {
   const fetched = await request<FetchedAudioResponse>("/audio/fetch", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, with_thumbnail: withThumbnail }),
   })
   if (!fetched) throw new Error("Could not fetch audio from that URL")
   return fetched

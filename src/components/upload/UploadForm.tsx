@@ -67,6 +67,7 @@ type FetchedDraft = {
   kind: AudioKind
   duration: number | null
   fileSize: number | null
+  coverFileSize: number | null
 }
 
 const stripExtension = (name: string) => name.replace(/\.[^.]+$/, "")
@@ -95,6 +96,7 @@ export function UploadForm() {
   const [url, setUrl] = useState("")
   const [fetched, setFetched] = useState<FetchedDraft | null>(null)
   const [fetching, setFetching] = useState(false)
+  const [withThumbnail, setWithThumbnail] = useState(true)
 
   function addFiles(files: File[]) {
     const rejected: string[] = []
@@ -231,7 +233,7 @@ export function UploadForm() {
 
     setFetching(true)
     try {
-      const audio = await fetchAudioByUrl(value)
+      const audio = await fetchAudioByUrl(value, withThumbnail)
       setFetched({
         tempId: audio.tempId,
         sourceUrl: value,
@@ -242,6 +244,7 @@ export function UploadForm() {
         kind: "music",
         duration: audio.duration,
         fileSize: audio.fileSize,
+        coverFileSize: audio.coverFileSize,
       })
       notify.success("Audio fetched.")
     } catch (cause) {
@@ -264,7 +267,9 @@ export function UploadForm() {
     try {
       if (user) {
         const usage = await getStorageUsage({ notifyUnauthorized: false }).catch(() => null)
-        const quotaError = usage ? storageQuotaError(usage, fetched.fileSize ?? 0) : null
+        const quotaError = usage
+          ? storageQuotaError(usage, (fetched.fileSize ?? 0) + (fetched.coverFileSize ?? 0))
+          : null
         if (quotaError) {
           notify.error(quotaError)
           return
@@ -372,6 +377,18 @@ export function UploadForm() {
               {fetching ? "Fetching..." : "Fetch audio"}
             </Button>
           </div>
+
+          <Field orientation="horizontal">
+            <Checkbox
+              id="url-import-thumbnail"
+              checked={withThumbnail}
+              disabled={fetching || saving || fetched !== null}
+              onCheckedChange={(checked) => setWithThumbnail(checked === true)}
+            />
+            <FieldLabel htmlFor="url-import-thumbnail" className="font-normal">
+              Fetch thumbnail as cover
+            </FieldLabel>
+          </Field>
         </div>
 
         {fetched ? (
@@ -387,6 +404,9 @@ export function UploadForm() {
                 <p className="truncate text-[11px] text-muted-foreground">
                   {fetched.fileSize != null ? fileSizeMb(fetched.fileSize) : "Size unknown"} ·{" "}
                   {formatDuration(fetched.duration ?? undefined)}
+                  {fetched.coverFileSize != null
+                    ? ` · Cover ${fileSizeMb(fetched.coverFileSize)}`
+                    : ""}
                 </p>
               </div>
               <Button
