@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type DragEvent } from "react"
 import { cn } from "cn"
 import {
   ChevronDown,
@@ -54,10 +54,13 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
     toggleShuffle,
     cycleRepeat,
     jumpTo,
+    reorderQueue,
     clearQueue,
   } = usePlayer()
   const [scrub, setScrub] = useState<number | null>(null)
   const activeRef = useRef<HTMLLIElement>(null)
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
+  const [dropIndex, setDropIndex] = useState<number | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -68,6 +71,32 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
   }, [open, currentIndex])
 
   if (!current) return null
+
+  function handleDragStart(event: DragEvent<HTMLDivElement>, index: number) {
+    setDraggingIndex(index)
+    setDropIndex(index)
+    event.dataTransfer.effectAllowed = "move"
+    event.dataTransfer.setData("text/plain", String(index))
+  }
+
+  function handleDragOver(event: DragEvent<HTMLLIElement>, index: number) {
+    if (draggingIndex === null) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = "move"
+    if (dropIndex !== index) setDropIndex(index)
+  }
+
+  function handleDrop(event: DragEvent<HTMLLIElement>, index: number) {
+    event.preventDefault()
+    if (draggingIndex !== null) reorderQueue(draggingIndex, index)
+    setDraggingIndex(null)
+    setDropIndex(null)
+  }
+
+  function handleDragEnd() {
+    setDraggingIndex(null)
+    setDropIndex(null)
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -208,9 +237,13 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
                       key={`${track.id}-${index}`}
                       ref={active ? activeRef : undefined}
                       aria-current={active ? "true" : undefined}
+                      onDragOver={(event) => handleDragOver(event, index)}
+                      onDrop={(event) => handleDrop(event, index)}
                       className={cn(
                         "flex items-center gap-2 rounded-lg p-2 pr-0.5 hover:bg-accent/60",
-                        active && "bg-accent/60"
+                        active && "bg-accent/60",
+                        draggingIndex === index && "opacity-50",
+                        dropIndex === index && draggingIndex !== index && "ring-2 ring-primary/40"
                       )}
                     >
                       <CoverPlayButton
@@ -219,18 +252,26 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
                         onToggle={play}
                         className="size-10"
                       />
-                      <div className="min-w-0 flex-1">
-                        <p className={cn("truncate text-sm mb-[0.075rem]", active && "font-medium text-primary")}>
-                          {track.title}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {active ? (isPlaying ? "Playing · " : "Paused · ") : null}
-                          {track.artist}
-                        </p>
+                      <div
+                        draggable
+                        onDragStart={(event) => handleDragStart(event, index)}
+                        onDragEnd={handleDragEnd}
+                        title="Drag to reorder"
+                        className="flex min-w-0 flex-1 cursor-grab select-none items-center gap-2 active:cursor-grabbing"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className={cn("truncate text-sm mb-[0.075rem]", active && "font-medium text-primary")}>
+                            {track.title}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {active ? (isPlaying ? "Playing · " : "Paused · ") : null}
+                            {track.artist}
+                          </p>
+                        </div>
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {formatDuration(track.duration)}
+                        </span>
                       </div>
-                      <span className="text-xs tabular-nums text-muted-foreground">
-                        {formatDuration(track.duration)}
-                      </span>
                       <QueueTrackActions index={index} isLast={index === queue.length - 1} />
                     </li>
                   )

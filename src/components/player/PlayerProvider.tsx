@@ -45,6 +45,7 @@ type PlayerValue = {
   enqueueNext: (track: Track) => void
   addToQueue: (track: Track) => void
   jumpTo: (index: number) => void
+  reorderQueue: (from: number, to: number) => void
   moveInQueue: (index: number, direction: -1 | 1) => void
   removeFromQueue: (index: number) => void
   clearQueue: () => void
@@ -249,21 +250,30 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setIsPlaying(true)
   }, [])
 
-  const moveInQueue = useCallback((index: number, direction: -1 | 1) => {
-    setQueue((prev) => {
-      const target = index + direction
-      if (target < 0 || target >= prev.length) return prev
-      const copy = [...prev]
-      const [moved] = copy.splice(index, 1)
-      copy.splice(target, 0, moved)
-      return copy
-    })
-    setCurrentIndex((prevIndex) => {
-      if (prevIndex === index) return index + direction
-      if (prevIndex === index + direction) return index
-      return prevIndex
-    })
-  }, [])
+  const reorderQueue = useCallback(
+    (from: number, to: number) => {
+      if (from === to || from < 0 || to < 0 || from >= queue.length || to >= queue.length) return
+
+      setQueue((prev) => {
+        const copy = [...prev]
+        const [moved] = copy.splice(from, 1)
+        copy.splice(to, 0, moved)
+        return copy
+      })
+      setCurrentIndex((prevIndex) => {
+        if (prevIndex === from) return to
+        if (from < prevIndex && to >= prevIndex) return prevIndex - 1
+        if (from > prevIndex && to <= prevIndex) return prevIndex + 1
+        return prevIndex
+      })
+    },
+    [queue.length]
+  )
+
+  const moveInQueue = useCallback(
+    (index: number, direction: -1 | 1) => reorderQueue(index, index + direction),
+    [reorderQueue]
+  )
 
   const removeFromQueue = useCallback(
     (index: number) => {
@@ -309,6 +319,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       enqueueNext,
       addToQueue,
       jumpTo,
+      reorderQueue,
       moveInQueue,
       removeFromQueue,
       clearQueue,
@@ -337,6 +348,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       enqueueNext,
       addToQueue,
       jumpTo,
+      reorderQueue,
       moveInQueue,
       removeFromQueue,
       clearQueue,
