@@ -64,7 +64,7 @@ type PlaylistListProps = {
 
 export function PlaylistList({ playlists, emptyAction, layout = "grid" }: PlaylistListProps) {
   const { tracksByIds } = useLibrary()
-  const { playTracks } = usePlayer()
+  const { playTracks, shuffle, toggleShuffle } = usePlayer()
   const [deleteTarget, setDeleteTarget] = useState<Playlist | null>(null)
 
   if (playlists.length === 0) {
@@ -122,7 +122,10 @@ export function PlaylistList({ playlists, emptyAction, layout = "grid" }: Playli
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       disabled={tracks.length === 0}
-                      onClick={() => playTracks(tracks, 0)}
+                      onClick={() => {
+                        if (!shuffle) toggleShuffle()
+                        playTracks(tracks, Math.floor(Math.random() * tracks.length), true)
+                      }}
                     >
                       <Shuffle />
                       Shuffle

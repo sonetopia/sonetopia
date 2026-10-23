@@ -9,7 +9,7 @@ import { PlaylistForm } from "@/components/playlist/PlaylistForm"
 import { QuickPicksList } from "@/components/dashboard/QuickPicksList"
 import { useAuth } from "@/lib/auth"
 import { useLibrary } from "@/lib/library"
-import { shuffledOrder } from "@/lib/playback"
+import { shuffleWithFirst } from "@/lib/playback"
 
 const QUICK_PICK_COUNT = 6
 
@@ -20,10 +20,7 @@ export function DashboardPage() {
 
   // reshuffled whenever the library changes, stable across re-renders
   const quickPicks = useMemo(
-    () =>
-      shuffledOrder(tracks.length, -1)
-        .slice(0, QUICK_PICK_COUNT)
-        .map((index) => tracks[index]),
+    () => shuffleWithFirst(tracks, -1).slice(0, QUICK_PICK_COUNT),
     [tracks]
   )
 

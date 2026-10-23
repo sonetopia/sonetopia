@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react"
 import { AUDIO_KINDS, useLibrary, type Track } from "@/lib/library"
-import { shuffledOrder, stepIndex, type RepeatMode } from "@/lib/playback"
+import { shuffleWithFirst, stepIndex, type RepeatMode } from "@/lib/playback"
 import { loadJSON, saveJSON } from "@/lib/persist"
 
 type PlayerPrefs = {
@@ -34,7 +34,7 @@ type PlayerValue = {
   nowPlayingOpen: boolean
   setNowPlayingOpen: (open: boolean) => void
   playTrack: (track: Track) => void
-  playTracks: (tracks: Track[], startIndex?: number) => void
+  playTracks: (tracks: Track[], startIndex?: number, shuffleOverride?: boolean) => void
   toggle: () => void
   next: () => void
   previous: () => void
@@ -66,7 +66,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [position, setPosition] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [shuffleOrder, setShuffleOrder] = useState<number[]>([])
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false)
 
   const { volume, repeat, shuffle } = prefs
@@ -79,24 +78,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     []
   )
 
-  const sequential = useMemo(() => queue.map((_, index) => index), [queue])
-  // fall back to queue order whenever the shuffle list no longer matches the queue
-  const order = shuffle && shuffleOrder.length === queue.length ? shuffleOrder : sequential
-
   const step = useCallback(
-    (delta: 1 | -1) => stepIndex(order, currentIndex, delta, repeat),
-    [order, currentIndex, repeat]
+    (delta: 1 | -1) => stepIndex(queue.length, currentIndex, delta, repeat),
+    [queue.length, currentIndex, repeat]
   )
 
   const playTracks = useCallback(
-    (tracks: Track[], startIndex = 0) => {
+    (tracks: Track[], startIndex = 0, shuffleOverride = shuffle) => {
       if (tracks.length === 0) return
       // surface the full player when playback starts from an empty state
       if (currentIndex < 0) setNowPlayingOpen(true)
-      setQueue(tracks)
-      setCurrentIndex(startIndex)
+      setQueue(shuffleOverride ? shuffleWithFirst(tracks, startIndex) : tracks)
+      setCurrentIndex(shuffleOverride ? 0 : startIndex)
       setIsPlaying(true)
-      if (shuffle) setShuffleOrder(shuffledOrder(tracks.length, startIndex))
     },
     [shuffle, currentIndex]
   )
@@ -213,9 +207,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   )
 
   const toggleShuffle = useCallback(() => {
-    if (!shuffle) setShuffleOrder(shuffledOrder(queue.length, currentIndex))
+    if (!shuffle && currentIndex >= 0) {
+      setQueue(shuffleWithFirst(queue, currentIndex))
+      setCurrentIndex(0)
+    }
     updatePrefs({ shuffle: !shuffle })
-  }, [shuffle, queue.length, currentIndex, updatePrefs])
+  }, [shuffle, queue, currentIndex, updatePrefs])
 
   const cycleRepeat = useCallback(
     () => updatePrefs({ repeat: repeat === "off" ? "all" : repeat === "all" ? "one" : "off" }),
@@ -292,7 +289,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setQueue([])
     setCurrentIndex(-1)
     setIsPlaying(false)
-  }, [])
+    updatePrefs({ shuffle: false })
+  }, [updatePrefs])
 
   const value = useMemo<PlayerValue>(
     () => ({

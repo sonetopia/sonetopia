@@ -131,7 +131,7 @@ export function PlaylistDetailPage() {
   function playFromRandomStart() {
     if (playlistTracks.length === 0) return
     if (!shuffle) toggleShuffle()
-    playTracks(playlistTracks, randomStartIndex(playlistTracks.length))
+    playTracks(playlistTracks, randomStartIndex(playlistTracks.length), true)
   }
 
   return (
