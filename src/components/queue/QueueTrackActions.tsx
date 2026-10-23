@@ -21,7 +21,7 @@ export function QueueTrackActions({ index, isLast }: { index: number; isLast: bo
       >
         <MoreHorizontal />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="w-45" sideOffset={4}>
         <DropdownMenuItem onClick={() => jumpTo(index)}>
           <Play />
           Play now

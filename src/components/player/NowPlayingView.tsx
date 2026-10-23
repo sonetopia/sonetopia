@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { cn } from "cn"
 import {
   ChevronDown,
@@ -57,10 +57,17 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
     clearQueue,
   } = usePlayer()
   const [scrub, setScrub] = useState<number | null>(null)
+  const activeRef = useRef<HTMLLIElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const frame = requestAnimationFrame(() => {
+      activeRef.current?.scrollIntoView({ block: "nearest" })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [open, currentIndex])
 
   if (!current) return null
-
-  const upcoming = queue.slice(currentIndex + 1)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -172,12 +179,12 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
             </div>
           </section>
 
-          <aside className="flex min-h-0 flex-1 flex-col border-t lg:w-80 lg:flex-none lg:border-t-0 lg:border-l">
+          <aside className="flex min-h-0 flex-1 flex-col border-t lg:w-96 lg:flex-none lg:border-t-0 lg:border-l">
             <div className="flex shrink-0 items-center justify-between gap-2 px-4 py-3">
               <div>
-                <p className="text-sm font-medium">Up next</p>
+                <p className="text-sm font-medium">Queue</p>
                 <p className="text-xs text-muted-foreground">
-                  {upcoming.length} track{upcoming.length === 1 ? "" : "s"} queued
+                  {queue.length} track{queue.length === 1 ? "" : "s"} · position {currentIndex + 1}
                 </p>
               </div>
               {queue.length > 0 ? (
@@ -187,27 +194,39 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
                 </Button>
               ) : null}
             </div>
-            <ul className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-              {upcoming.length === 0 ? (
+            <ul className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+              {queue.length === 0 ? (
                 <li className="px-2 py-8 text-center text-xs text-muted-foreground">
                   Nothing queued yet. Add tracks from your library or a playlist.
                 </li>
               ) : (
-                upcoming.map((track, offset) => {
-                  const index = currentIndex + 1 + offset
+                queue.map((track, index) => {
+                  const active = index === currentIndex
+                  const play = () => (active ? toggle() : jumpTo(index))
                   return (
                     <li
                       key={`${track.id}-${index}`}
-                      className="flex items-center gap-2 rounded-lg p-1 pr-0.5 hover:bg-accent/60"
+                      ref={active ? activeRef : undefined}
+                      aria-current={active ? "true" : undefined}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg p-2 pr-0.5 hover:bg-accent/60",
+                        active && "bg-accent/60"
+                      )}
                     >
                       <CoverPlayButton
                         track={track}
-                        onToggle={() => jumpTo(index)}
-                        className="size-8"
+                        playing={active && isPlaying}
+                        onToggle={play}
+                        className="size-10"
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm">{track.title}</p>
-                        <p className="truncate text-xs text-muted-foreground">{track.artist}</p>
+                        <p className={cn("truncate text-sm mb-[0.075rem]", active && "font-medium text-primary")}>
+                          {track.title}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {active ? (isPlaying ? "Playing · " : "Paused · ") : null}
+                          {track.artist}
+                        </p>
                       </div>
                       <span className="text-xs tabular-nums text-muted-foreground">
                         {formatDuration(track.duration)}
