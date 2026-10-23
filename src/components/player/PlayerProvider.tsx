@@ -11,6 +11,7 @@ import {
 import { AUDIO_KINDS, useLibrary, type Track } from "@/lib/library"
 import { shuffleWithFirst, stepIndex, type RepeatMode } from "@/lib/playback"
 import { loadJSON, saveJSON } from "@/lib/persist"
+import { useAuth } from "@/lib/auth"
 
 type PlayerPrefs = {
   volume: number
@@ -20,6 +21,38 @@ type PlayerPrefs = {
 
 const DEFAULT_PREFS: PlayerPrefs = { volume: 0.8, repeat: "off", shuffle: false }
 const PLAYER_KEY = "sonetopia:player"
+const QUEUE_KEY = "sonetopia:queue"
+
+type QueueSnapshot = {
+  userId: string
+  tracks: Track[]
+  currentIndex: number
+}
+
+function loadQueueSnapshot(userId?: string): QueueSnapshot | null {
+  if (!userId) return null
+  try {
+    const raw = sessionStorage.getItem(QUEUE_KEY)
+    if (!raw) return null
+    const snapshot = JSON.parse(raw) as QueueSnapshot
+    if (
+      snapshot.userId !== userId ||
+      !Array.isArray(snapshot.tracks) ||
+      snapshot.tracks.length === 0
+    ) {
+      return null
+    }
+    const index = snapshot.currentIndex
+    return {
+      userId,
+      tracks: snapshot.tracks,
+      currentIndex:
+        typeof index === "number" && index >= 0 && index < snapshot.tracks.length ? index : -1,
+    }
+  } catch {
+    return null
+  }
+}
 
 type PlayerValue = {
   queue: Track[]
@@ -54,24 +87,51 @@ type PlayerValue = {
 const PlayerContext = createContext<PlayerValue | null>(null)
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
-  const { setTrackDuration } = useLibrary()
+  const { user } = useAuth()
+  const { setTrackDuration, trackById } = useLibrary()
   const audioRef = useRef<HTMLAudioElement>(null)
   const loadedRef = useRef<string | null>(null)
 
+  const [restoredQueue] = useState(() => loadQueueSnapshot(user?.id))
   const [prefs, setPrefs] = useState<PlayerPrefs>(() =>
-    loadJSON<PlayerPrefs>(PLAYER_KEY, DEFAULT_PREFS)
+    restoredQueue
+      ? loadJSON<PlayerPrefs>(PLAYER_KEY, DEFAULT_PREFS)
+      : { ...loadJSON<PlayerPrefs>(PLAYER_KEY, DEFAULT_PREFS), shuffle: false }
   )
-  const [queue, setQueue] = useState<Track[]>([])
-  const [currentIndex, setCurrentIndex] = useState(-1)
+  const [storedQueue, setQueue] = useState<Track[]>(restoredQueue?.tracks ?? [])
+  const [currentIndex, setCurrentIndex] = useState(restoredQueue?.currentIndex ?? -1)
   const [isPlaying, setIsPlaying] = useState(false)
   const [position, setPosition] = useState(0)
   const [duration, setDuration] = useState(0)
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false)
 
   const { volume, repeat, shuffle } = prefs
+  const queue = useMemo(
+    () => storedQueue.map((track) => trackById(track.id) ?? track),
+    [storedQueue, trackById]
+  )
   const current = currentIndex >= 0 ? queue[currentIndex] : undefined
 
   useEffect(() => saveJSON(PLAYER_KEY, prefs), [prefs])
+
+  useEffect(() => {
+    try {
+      if (!user?.id || storedQueue.length === 0) {
+        sessionStorage.removeItem(QUEUE_KEY)
+        return
+      }
+      sessionStorage.setItem(
+        QUEUE_KEY,
+        JSON.stringify({
+          userId: user.id,
+          tracks: storedQueue.map((track) => ({ ...track, coverUrl: undefined })),
+          currentIndex,
+        })
+      )
+    } catch {
+      // storage disabled or full; playback keeps working without reload persistence
+    }
+  }, [storedQueue, currentIndex, user?.id])
 
   const updatePrefs = useCallback(
     (patch: Partial<PlayerPrefs>) => setPrefs((prev) => ({ ...prev, ...patch })),
@@ -134,7 +194,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setPosition(seconds)
   }, [])
 
-  // load a new source only when the track identity changes, so re-renders never restart playback
+  // load a new source only when its identity or signed URL changes, so re-renders never restart playback
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
@@ -143,8 +203,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       audio.removeAttribute("src")
       return
     }
-    if (loadedRef.current === current.id) return
-    loadedRef.current = current.id
+    const loadKey = `${current.id}:${current.src}`
+    if (loadedRef.current === loadKey) return
+    loadedRef.current = loadKey
     audio.src = current.src
     audio.currentTime = 0
     setPosition(0)
