@@ -125,3 +125,7 @@ export async function updateCurrentUser(input: UpdateUserInput) {
   if (!user) throw new Error("Could not update your account")
   return user
 }
+
+export async function deleteCurrentUser() {
+  await requestRoot<unknown>("/me", { method: "DELETE" })
+}

@@ -3,8 +3,10 @@ import {
   CalendarDays,
   HardDrive,
   ShieldCheck,
+  Trash2Icon,
   UserRound,
 } from "lucide-react"
+import { DeleteAccountDialog } from "@/components/account/DeleteAccountDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -44,6 +46,7 @@ export function AccountPage() {
     confirmPassword: "",
   })
   const [saving, setSaving] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [storageState, setStorageState] = useState<{
     userId?: string
     usage: StorageUsage | null
@@ -340,6 +343,28 @@ export function AccountPage() {
           </CardContent>
         </Card>
       </div>
+
+      {user ? (
+        <section>
+          <h6 className="mb-2 font-medium">Danger Zone</h6>
+          <div className="divide-y divide-border overflow-hidden rounded-xl bg-card ring-1 ring-destructive/20">
+            <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="font-medium">Delete account</p>
+                <p className="text-sm text-muted-foreground">
+                  Deleting your account permanently removes your uploaded audio, playlists,
+                  and all associated data. This action cannot be undone.
+                </p>
+              </div>
+              <Button variant="destructive" className="rounded-md" onClick={() => setDeleteDialogOpen(true)}>
+                Delete this account
+              </Button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <DeleteAccountDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} />
     </div>
   )
 }

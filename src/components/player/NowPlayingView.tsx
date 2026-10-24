@@ -259,8 +259,8 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
                         title="Drag to reorder"
                         className="flex min-w-0 flex-1 cursor-grab select-none items-center gap-2 active:cursor-grabbing"
                       >
-                        <div className="min-w-0 flex-1">
-                          <p className={cn("truncate text-sm mb-[0.075rem]", active && "font-medium text-primary")}>
+                        <div className="min-w-0 flex-1 flex flex-col gap-0.25 overflow-hidden">
+                          <p className={cn("truncate text-sm", active && "font-medium text-primary")}>
                             {track.title}
                           </p>
                           <p className="truncate text-xs text-muted-foreground">
