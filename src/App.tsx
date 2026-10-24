@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { NotificationToast } from "@/components/ui/notification-toast"
 import { AccountPage } from "@/pages/AccountPage"
 import { DashboardPage } from "@/pages/DashboardPage"
+import { GithubCallbackPage } from "@/pages/GithubCallbackPage"
 import { LandingPage } from "@/pages/LandingPage"
 import { LibraryPage } from "@/pages/LibraryPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
@@ -35,6 +36,7 @@ function App() {
                   <Routes>
                     <Route element={<PublicShell />}>
                       <Route path="/about" element={<LandingPage />} />
+                      <Route path="/auth/github/callback" element={<GithubCallbackPage />} />
                       <Route path="/verify-email" element={<VerifyEmailPage />} />
                     </Route>
 

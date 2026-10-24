@@ -38,6 +38,10 @@ export type GoogleLoginInput = {
   idToken: string
 }
 
+export type GithubLoginInput = {
+  code: string
+}
+
 export async function login(input: LoginInput) {
   const auth = await requestRoot<AuthResponse>(
     "/auth/login",
@@ -77,6 +81,20 @@ export async function loginWithGoogle(input: GoogleLoginInput) {
     { authenticated: false }
   )
   if (!auth) throw new Error("Google sign-in failed")
+  return auth
+}
+
+export async function loginWithGithub(input: GithubLoginInput) {
+  const auth = await requestRoot<AuthResponse>(
+    "/auth/github",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+    { authenticated: false }
+  )
+  if (!auth) throw new Error("GitHub sign-in failed")
   return auth
 }
 

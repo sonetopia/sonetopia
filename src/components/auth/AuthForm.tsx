@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/lib/auth"
+import { isGithubOAuthConfigured, startGithubOAuth } from "@/lib/github-oauth"
 import { Field, FieldLabel } from "@/components/ui/field"
 
 export type AuthMode = "sign-in" | "sign-up"
@@ -49,6 +50,7 @@ type AuthFormProps = {
 export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
   const { signIn, signUp, signInWithGoogle, resendVerification } = useAuth()
   const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim()
+  const githubConfigured = isGithubOAuthConfigured()
   const isSignUp = mode === "sign-up"
   const [values, setValues] = useState({
     name: "",
@@ -139,6 +141,19 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
     }
   }
 
+  function handleGithubSignIn() {
+    if (!githubConfigured) {
+      notify.error("GitHub sign-in is not configured.")
+      return
+    }
+
+    try {
+      startGithubOAuth()
+    } catch (cause) {
+      notify.error(cause instanceof Error ? cause.message : "Could not start GitHub sign-in.")
+    }
+  }
+
   if (verification) {
     return (
       <Card className="mx-auto w-full max-w-md ring-0">
@@ -209,18 +224,21 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className={isSignUp ? "px-0 pt-5" : "px-1"}>
-        {!isSignUp && googleClientId ? (
+        {!isSignUp && (googleClientId || githubConfigured) ? (
           <div className="mb-4 space-y-3">
-            <div className="mx-auto w-full max-w-[400px]">
-              {googleButton}
-            </div>
+            {googleClientId ? (
+              <div className="mx-auto w-full max-w-[400px]">
+                {googleButton}
+              </div>
+            ) : null}
             <div className="mx-auto w-full max-w-[400px]">
               <Button
                 type="button"
                 variant="outline"
                 size="lg"
                 className="h-10 w-full justify-start rounded-sm gap-3 px-3"
-                disabled
+                disabled={submitting || googleSubmitting}
+                onClick={handleGithubSignIn}
               >
                 <GithubMark />
                 <div className="flex w-full justify-center">
@@ -403,7 +421,8 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
                 variant="outline"
                 size="lg"
                 className="h-10 w-full justify-start rounded-sm gap-3 px-3"
-                disabled
+                disabled={submitting || googleSubmitting}
+                onClick={handleGithubSignIn}
               >
                 <GithubMark />
                 <div className="flex w-full justify-center">

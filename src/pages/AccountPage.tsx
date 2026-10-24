@@ -3,7 +3,6 @@ import {
   CalendarDays,
   HardDrive,
   ShieldCheck,
-  Trash2Icon,
   UserRound,
 } from "lucide-react"
 import { DeleteAccountDialog } from "@/components/account/DeleteAccountDialog"

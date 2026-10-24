@@ -10,6 +10,7 @@ import {
 import {
   getCurrentUser,
   login as loginRequest,
+  loginWithGithub as loginWithGithubRequest,
   loginWithGoogle as loginWithGoogleRequest,
   register as registerRequest,
   resendVerification as resendVerificationRequest,
@@ -44,6 +45,7 @@ type AuthValue = {
   }) => Promise<AuthResult>
   signIn: (input: { username: string; password: string }) => Promise<AuthResult>
   signInWithGoogle: (idToken: string) => Promise<AuthResult>
+  signInWithGithub: (code: string) => Promise<AuthResult>
   resendVerification: (email: string) => Promise<AuthResult>
   updateProfile: (input: UpdateUserInput) => Promise<AuthResult>
   signOut: () => void
@@ -223,6 +225,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [applyAuthResponse])
 
+  const signInWithGithub = useCallback<AuthValue["signInWithGithub"]>(async (code) => {
+    const authorizationCode = code.trim()
+    if (!authorizationCode) {
+      return { ok: false, error: "GitHub did not return an authorization code." }
+    }
+
+    try {
+      const auth = await loginWithGithubRequest({ code: authorizationCode })
+      if (!auth.user.emailVerifiedAt) {
+        return { ok: true, verificationRequired: { email: auth.user.email } }
+      }
+      applyAuthResponse(auth)
+      return { ok: true }
+    } catch (cause) {
+      return { ok: false, error: errorMessage(cause) }
+    }
+  }, [applyAuthResponse])
+
   const resendVerification = useCallback<AuthValue["resendVerification"]>(async (email) => {
     const normalized = email.trim().toLowerCase()
     if (!EMAIL_PATTERN.test(normalized)) {
@@ -250,6 +270,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       signIn,
       signInWithGoogle,
+      signInWithGithub,
       resendVerification,
       updateProfile,
       signOut,
@@ -260,6 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       signIn,
       signInWithGoogle,
+      signInWithGithub,
       resendVerification,
       updateProfile,
       signOut,
