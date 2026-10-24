@@ -36,6 +36,7 @@ function formatDate(value?: string | null) {
 export function AccountPage() {
   const { user, updateProfile } = useAuth()
   const [values, setValues] = useState({
+    name: user?.name ?? "",
     username: user?.username ?? "",
     email: user?.email ?? "",
     currentPassword: "",
@@ -78,7 +79,7 @@ export function AccountPage() {
     }
   }, [user?.id])
 
-  const initials = (user?.username ?? "Account")
+  const initials = (user?.name || user?.username || "Account")
     .split(" ")
     .map((part) => part[0])
     .slice(0, 2)
@@ -86,8 +87,8 @@ export function AccountPage() {
     .toUpperCase()
 
   const isDirty =
+    values.name !== (user?.name ?? "") ||
     values.username !== (user?.username ?? "") ||
-    values.email !== (user?.email ?? "") ||
     values.password.length > 0 ||
     values.confirmPassword.length > 0
 
@@ -113,8 +114,8 @@ export function AccountPage() {
 
     try {
       const result = await updateProfile({
+        name: values.name,
         username: values.username,
-        email: values.email,
         password: values.password || undefined,
         currentPassword: values.password ? values.currentPassword : undefined,
       })
@@ -126,8 +127,8 @@ export function AccountPage() {
 
       setValues((prev) => ({
         ...prev,
+        name: prev.name.trim(),
         username: prev.username.trim(),
-        email: prev.email.trim().toLowerCase(),
         currentPassword: "",
         password: "",
         confirmPassword: "",
@@ -153,6 +154,19 @@ export function AccountPage() {
             <CardContent className="space-y-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field>
+                  <FieldLabel htmlFor="account-name">Name</FieldLabel>
+                  <Input
+                    id="account-name"
+                    value={values.name}
+                    autoComplete="name"
+                    maxLength={100}
+                    required
+                    disabled={saving}
+                    onChange={(event) => updateField("name", event.target.value)}
+                  />
+                </Field>
+
+                <Field>
                   <FieldLabel htmlFor="account-username">Username</FieldLabel>
                   <Input
                     id="account-username"
@@ -166,7 +180,7 @@ export function AccountPage() {
                   />
                 </Field>
 
-                <Field>
+                <Field className="sm:col-span-2">
                   <FieldLabel htmlFor="account-email">Email</FieldLabel>
                   <Input
                     id="account-email"
@@ -174,9 +188,8 @@ export function AccountPage() {
                     value={values.email}
                     autoComplete="off"
                     maxLength={255}
-                    required
-                    disabled={saving}
-                    onChange={(event) => updateField("email", event.target.value)}
+                    readOnly
+                    className="bg-muted text-muted-foreground"
                   />
                 </Field>
               </div>
@@ -245,7 +258,10 @@ export function AccountPage() {
                 {initials}
               </span>
               <div className="space-y-1">
-                <p className="font-heading text-lg font-semibold">{user?.username}</p>
+                <p className="font-heading text-lg font-semibold">
+                  {user?.name || user?.username}
+                </p>
+                <p className="text-xs text-muted-foreground">@{user?.username}</p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
               <Badge variant="secondary">

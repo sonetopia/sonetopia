@@ -17,16 +17,21 @@ export type LoginInput = {
 }
 
 export type RegisterInput = {
+  name: string
   username: string
   email: string
   password: string
 }
 
 export type UpdateUserInput = {
+  name: string
   username: string
-  email: string
   password?: string
   currentPassword?: string
+}
+
+export type ResendVerificationInput = {
+  email: string
 }
 
 export async function login(input: LoginInput) {
@@ -55,6 +60,30 @@ export async function register(input: RegisterInput) {
   )
   if (!auth) throw new Error("Registration failed")
   return auth
+}
+
+export async function verifyEmail(token: string) {
+  const message = await requestRoot<string>(
+    `/auth/verify-email?token=${encodeURIComponent(token)}`,
+    undefined,
+    { authenticated: false }
+  )
+  if (!message) throw new Error("Email verification failed")
+  return message
+}
+
+export async function resendVerification(input: ResendVerificationInput) {
+  const message = await requestRoot<string>(
+    "/auth/resend-verification",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+    { authenticated: false }
+  )
+  if (!message) throw new Error("Could not resend the verification email")
+  return message
 }
 
 export async function getCurrentUser() {

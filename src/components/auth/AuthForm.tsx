@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
+import { MailCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { notify } from "@/components/ui/notification-toast"
 import {
@@ -15,6 +16,13 @@ import { Field, FieldLabel } from "@/components/ui/field"
 
 export type AuthMode = "sign-in" | "sign-up"
 
+const RESEND_COOLDOWN_SECONDS = 60
+
+function cooldownFromError(message: string) {
+  const match = message.match(/wait\s+(\d+)\s+seconds?/i)
+  return match ? Number(match[1]) : 0
+}
+
 type AuthFormProps = {
   mode: AuthMode
   onModeChange: (mode: AuthMode) => void
@@ -22,15 +30,25 @@ type AuthFormProps = {
 }
 
 export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
-  const { signIn, signUp } = useAuth()
+  const { signIn, signUp, resendVerification } = useAuth()
   const isSignUp = mode === "sign-up"
   const [values, setValues] = useState({
+    name: "",
     username: "",
     email: "",
     password: "",
     confirmPassword: "",
   })
   const [submitting, setSubmitting] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
+  const [verification, setVerification] = useState<{ email: string } | null>(null)
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = window.setTimeout(() => setCooldown((value) => value - 1), 1000)
+    return () => window.clearTimeout(timer)
+  }, [cooldown])
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -44,10 +62,80 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
         return
       }
 
+      if (result.verificationRequired) {
+        setVerification(result.verificationRequired)
+        setCooldown(isSignUp ? RESEND_COOLDOWN_SECONDS : 0)
+        return
+      }
+
       onSuccess?.()
     } finally {
       setSubmitting(false)
     }
+  }
+
+  async function handleResend() {
+    if (!verification || resending || cooldown > 0) return
+
+    setResending(true)
+    try {
+      const result = await resendVerification(verification.email)
+      if (!result.ok) {
+        const wait = cooldownFromError(result.error)
+        if (wait > 0) setCooldown(wait)
+        notify.error(result.error)
+        return
+      }
+
+      setCooldown(RESEND_COOLDOWN_SECONDS)
+      notify.success("Verification email sent.", "Check your inbox for the new link.")
+    } finally {
+      setResending(false)
+    }
+  }
+
+  if (verification) {
+    return (
+      <Card className="w-full max-w-md ring-0">
+        <CardHeader className="px-1">
+          <span className="mb-2 grid size-10 place-items-center rounded-full bg-primary/10 text-primary">
+            <MailCheck className="size-5" />
+          </span>
+          <CardTitle>Verify your email</CardTitle>
+          <CardDescription>
+            We sent a verification link to{" "}
+            <span className="font-medium text-foreground">{verification.email}</span>. Open it,
+            then sign in to start using Sonetopia.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2 px-1">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={resending || cooldown > 0}
+            onClick={handleResend}
+          >
+            {resending
+              ? "Sending..."
+              : cooldown > 0
+                ? `Resend available in ${cooldown}s`
+                : "Resend verification email"}
+          </Button>
+          <Button
+            type="button"
+            className="w-full"
+            onClick={() => {
+              setVerification(null)
+              setCooldown(0)
+              onModeChange("sign-in")
+            }}
+          >
+            Back to sign in
+          </Button>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -62,6 +150,23 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
       </CardHeader>
       <CardContent className="px-1">
         <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
+          {isSignUp ? (
+            <Field>
+              <FieldLabel htmlFor="auth-name">Name</FieldLabel>
+              <Input
+                id="auth-name"
+                value={values.name}
+                autoComplete="name"
+                placeholder="Your name"
+                required
+                maxLength={100}
+                onChange={(event) =>
+                  setValues((prev) => ({ ...prev, name: event.target.value }))
+                }
+              />
+            </Field>
+          ) : null}
+
           <Field>
             <FieldLabel htmlFor="auth-username">Username</FieldLabel>
             <Input

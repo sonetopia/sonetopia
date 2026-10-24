@@ -14,6 +14,7 @@ import { NotFoundPage } from "@/pages/NotFoundPage"
 import { PlaylistDetailPage } from "@/pages/PlaylistDetailPage"
 import { QueuePage } from "@/pages/QueuePage"
 import { UploadPage } from "@/pages/UploadPage"
+import { VerifyEmailPage } from "@/pages/VerifyEmailPage"
 import { AuthProvider, useAuth } from "@/lib/auth"
 import { LibraryProvider } from "@/lib/library"
 
@@ -34,6 +35,7 @@ function App() {
                   <Routes>
                     <Route element={<PublicShell />}>
                       <Route path="/about" element={<LandingPage />} />
+                      <Route path="/verify-email" element={<VerifyEmailPage />} />
                     </Route>
 
                     <Route element={<AppShell />}>

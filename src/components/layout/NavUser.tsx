@@ -27,7 +27,7 @@ export function NavUser() {
   const { openAuth } = useAuthDialog()
   const navigate = useNavigate()
 
-  const name = user?.username ?? "Account"
+  const name = user?.name || user?.username || "Account"
   const email = user?.email ?? ""
 
   const initials = name

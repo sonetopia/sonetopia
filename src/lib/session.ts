@@ -3,7 +3,9 @@ import { loadJSON, saveJSON } from "@/lib/persist"
 export type AuthUser = {
   id: string
   username: string
+  name?: string | null
   email: string
+  emailVerifiedAt?: string | null
   storageUsed?: number | null
   isAdmin?: boolean | null
   createdAt?: string | null

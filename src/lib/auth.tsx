@@ -11,6 +11,7 @@ import {
   getCurrentUser,
   login as loginRequest,
   register as registerRequest,
+  resendVerification as resendVerificationRequest,
   updateCurrentUser as updateCurrentUserRequest,
   type AuthResponse,
   type UpdateUserInput,
@@ -26,18 +27,22 @@ import {
 
 export type User = AuthUser
 
-export type AuthResult = { ok: true } | { ok: false; error: string }
+export type AuthResult =
+  | { ok: true; verificationRequired?: { email: string } }
+  | { ok: false; error: string }
 
 type AuthValue = {
   user?: User
   loading: boolean
   signUp: (input: {
+    name: string
     username: string
     email: string
     password: string
     confirmPassword: string
   }) => Promise<AuthResult>
   signIn: (input: { username: string; password: string }) => Promise<AuthResult>
+  resendVerification: (email: string) => Promise<AuthResult>
   updateProfile: (input: UpdateUserInput) => Promise<AuthResult>
   signOut: () => void
 }
@@ -116,9 +121,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback<AuthValue["signUp"]>(
     async (input) => {
+      const name = input.name.trim()
       const username = input.username.trim()
       const email = input.email.trim().toLowerCase()
 
+      if (!name) return { ok: false, error: "Please enter your name." }
+      if (name.length > 100)
+        return { ok: false, error: "Name must be at most 100 characters." }
       if (username.length < 3 || username.length > 50)
         return { ok: false, error: "Username must be between 3 and 50 characters." }
       if (!EMAIL_PATTERN.test(email))
@@ -131,7 +140,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { ok: false, error: "Passwords do not match." }
 
       try {
-        applyAuthResponse(await registerRequest({ username, email, password: input.password }))
+        const auth = await registerRequest({ name, username, email, password: input.password })
+        if (!auth.user.emailVerifiedAt) {
+          return { ok: true, verificationRequired: { email: auth.user.email } }
+        }
+        applyAuthResponse(auth)
         return { ok: true }
       } catch (cause) {
         return { ok: false, error: errorMessage(cause) }
@@ -147,7 +160,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!input.password) return { ok: false, error: "Please enter your password." }
 
       try {
-        applyAuthResponse(await loginRequest({ username, password: input.password }))
+        const auth = await loginRequest({ username, password: input.password })
+        if (!auth.user.emailVerifiedAt) {
+          return { ok: true, verificationRequired: { email: auth.user.email } }
+        }
+        applyAuthResponse(auth)
         return { ok: true }
       } catch (cause) {
         return { ok: false, error: errorMessage(cause) }
@@ -157,13 +174,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const updateProfile = useCallback<AuthValue["updateProfile"]>(async (input) => {
+    const name = input.name.trim()
     const username = input.username.trim()
-    const email = input.email.trim().toLowerCase()
 
+    if (!name) return { ok: false, error: "Please enter your name." }
+    if (name.length > 100)
+      return { ok: false, error: "Name must be at most 100 characters." }
     if (username.length < 3 || username.length > 50)
       return { ok: false, error: "Username must be between 3 and 50 characters." }
-    if (!EMAIL_PATTERN.test(email))
-      return { ok: false, error: "Please enter a valid email address." }
     if (input.password && (!input.currentPassword || !input.currentPassword.trim()))
       return { ok: false, error: "Enter your current password to set a new password." }
     if (input.password && input.password.length < 6)
@@ -173,14 +191,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const updated = await updateCurrentUserRequest({
+        name,
         username,
-        email,
         password: input.password || undefined,
         currentPassword: input.password ? input.currentPassword : undefined,
       })
       const stored = getStoredSession()
       if (stored) saveSession({ ...stored, user: updated })
       setUser(updated)
+      return { ok: true }
+    } catch (cause) {
+      return { ok: false, error: errorMessage(cause) }
+    }
+  }, [])
+
+  const resendVerification = useCallback<AuthValue["resendVerification"]>(async (email) => {
+    const normalized = email.trim().toLowerCase()
+    if (!EMAIL_PATTERN.test(normalized)) {
+      return { ok: false, error: "Please enter a valid email address." }
+    }
+
+    try {
+      await resendVerificationRequest({ email: normalized })
       return { ok: true }
     } catch (cause) {
       return { ok: false, error: errorMessage(cause) }
@@ -194,8 +226,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AuthValue>(
-    () => ({ user, loading, signUp, signIn, updateProfile, signOut }),
-    [user, loading, signUp, signIn, updateProfile, signOut]
+    () => ({ user, loading, signUp, signIn, resendVerification, updateProfile, signOut }),
+    [user, loading, signUp, signIn, resendVerification, updateProfile, signOut]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
