@@ -10,6 +10,7 @@ import {
 import {
   getCurrentUser,
   login as loginRequest,
+  loginWithGoogle as loginWithGoogleRequest,
   register as registerRequest,
   resendVerification as resendVerificationRequest,
   updateCurrentUser as updateCurrentUserRequest,
@@ -42,6 +43,7 @@ type AuthValue = {
     confirmPassword: string
   }) => Promise<AuthResult>
   signIn: (input: { username: string; password: string }) => Promise<AuthResult>
+  signInWithGoogle: (idToken: string) => Promise<AuthResult>
   resendVerification: (email: string) => Promise<AuthResult>
   updateProfile: (input: UpdateUserInput) => Promise<AuthResult>
   signOut: () => void
@@ -205,6 +207,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const signInWithGoogle = useCallback<AuthValue["signInWithGoogle"]>(async (idToken) => {
+    const token = idToken.trim()
+    if (!token) return { ok: false, error: "Google did not return a sign-in token." }
+
+    try {
+      const auth = await loginWithGoogleRequest({ idToken: token })
+      if (!auth.user.emailVerifiedAt) {
+        return { ok: true, verificationRequired: { email: auth.user.email } }
+      }
+      applyAuthResponse(auth)
+      return { ok: true }
+    } catch (cause) {
+      return { ok: false, error: errorMessage(cause) }
+    }
+  }, [applyAuthResponse])
+
   const resendVerification = useCallback<AuthValue["resendVerification"]>(async (email) => {
     const normalized = email.trim().toLowerCase()
     if (!EMAIL_PATTERN.test(normalized)) {
@@ -226,8 +244,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AuthValue>(
-    () => ({ user, loading, signUp, signIn, resendVerification, updateProfile, signOut }),
-    [user, loading, signUp, signIn, resendVerification, updateProfile, signOut]
+    () => ({
+      user,
+      loading,
+      signUp,
+      signIn,
+      signInWithGoogle,
+      resendVerification,
+      updateProfile,
+      signOut,
+    }),
+    [
+      user,
+      loading,
+      signUp,
+      signIn,
+      signInWithGoogle,
+      resendVerification,
+      updateProfile,
+      signOut,
+    ]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

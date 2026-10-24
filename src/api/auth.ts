@@ -34,6 +34,10 @@ export type ResendVerificationInput = {
   email: string
 }
 
+export type GoogleLoginInput = {
+  idToken: string
+}
+
 export async function login(input: LoginInput) {
   const auth = await requestRoot<AuthResponse>(
     "/auth/login",
@@ -59,6 +63,20 @@ export async function register(input: RegisterInput) {
     { authenticated: false }
   )
   if (!auth) throw new Error("Registration failed")
+  return auth
+}
+
+export async function loginWithGoogle(input: GoogleLoginInput) {
+  const auth = await requestRoot<AuthResponse>(
+    "/auth/google",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+    { authenticated: false }
+  )
+  if (!auth) throw new Error("Google sign-in failed")
   return auth
 }
 

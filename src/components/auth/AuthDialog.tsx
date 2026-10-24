@@ -26,7 +26,13 @@ export function AuthDialogProvider({ children }: { children: ReactNode }) {
     <AuthDialogContext.Provider value={value}>
       {children}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent
+          className={
+            mode === "sign-up"
+              ? "max-h-[calc(100svh-2rem)] overflow-y-auto p-0 sm:max-w-4xl"
+              : "sm:max-w-md"
+          }
+        >
           <DialogTitle className="sr-only">
             {mode === "sign-up" ? "Create your account" : "Sign in"}
           </DialogTitle>
