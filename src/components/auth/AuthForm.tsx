@@ -46,9 +46,15 @@ type AuthFormProps = {
   mode: AuthMode
   onModeChange: (mode: AuthMode) => void
   onSuccess?: () => void
+  onVerificationChange?: (active: boolean) => void
 }
 
-export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
+export function AuthForm({
+  mode,
+  onModeChange,
+  onSuccess,
+  onVerificationChange,
+}: AuthFormProps) {
   const { signIn, signUp, signInWithGoogle, resendVerification } = useAuth()
   const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim()
   const githubConfigured = isGithubOAuthConfigured()
@@ -87,7 +93,7 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
       }
 
       if (result.verificationRequired) {
-        setVerification(result.verificationRequired)
+        showVerification(result.verificationRequired)
         setCooldown(isSignUp ? RESEND_COOLDOWN_SECONDS : 0)
         return
       }
@@ -131,7 +137,7 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
       }
 
       if (result.verificationRequired) {
-        setVerification(result.verificationRequired)
+        showVerification(result.verificationRequired)
         setCooldown(0)
         return
       }
@@ -154,6 +160,11 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
     } catch (cause) {
       notify.error(cause instanceof Error ? cause.message : "Could not start GitHub sign-in.")
     }
+  }
+
+  function showVerification(next: { email: string } | null) {
+    setVerification(next)
+    onVerificationChange?.(next !== null)
   }
 
   if (verification) {
@@ -188,7 +199,7 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
             type="button"
             className="w-full"
             onClick={() => {
-              setVerification(null)
+              showVerification(null)
               setCooldown(0)
               onModeChange("sign-in")
             }}

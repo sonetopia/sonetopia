@@ -56,7 +56,7 @@ export function AudioCover({ track, className }: { track: Track; className?: str
   )
 }
 
-/** Cover with a hover/focus play-pause overlay; the overlay is always visible on touch devices. */
+/** Cover with a hover/focus play-pause overlay. */
 export function CoverPlayButton({
   track,
   playing = false,
@@ -77,7 +77,7 @@ export function CoverPlayButton({
         aria-label={playing ? `Pause ${track.title}` : `Play ${track.title}`}
         className="absolute inset-0 grid cursor-pointer place-items-center rounded-md bg-black/0 text-white transition-colors hover:bg-black/45 focus-visible:bg-black/45 focus-visible:outline-none"
       >
-        <span className="grid place-items-center opacity-0 transition-opacity group-hover/cover:opacity-100 group-focus-within/cover:opacity-100 pointer-coarse:opacity-100">
+        <span className="grid place-items-center opacity-0 transition-opacity group-hover/cover:opacity-100 group-focus-within/cover:opacity-100">
           {playing ? <Pause className="size-5" /> : <Play className="size-5" />}
         </span>
       </button>

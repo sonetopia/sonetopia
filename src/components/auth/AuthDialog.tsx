@@ -11,11 +11,13 @@ const AuthDialogContext = createContext<AuthDialogValue | null>(null)
 export function AuthDialogProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
   const [mode, setMode] = useState<AuthMode>("sign-in")
+  const [verifying, setVerifying] = useState(false)
 
   const value = useMemo<AuthDialogValue>(
     () => ({
       openAuth: (nextMode = "sign-in") => {
         setMode(nextMode)
+        setVerifying(false)
         setOpen(true)
       },
     }),
@@ -25,11 +27,19 @@ export function AuthDialogProvider({ children }: { children: ReactNode }) {
   return (
     <AuthDialogContext.Provider value={value}>
       {children}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen)
+          if (!nextOpen) setVerifying(false)
+        }}
+      >
         <DialogContent
           initialFocus={() => document.getElementById("auth-username")}
           className={
-            mode === "sign-up"
+            verifying
+              ? undefined
+              : mode === "sign-up"
               ? "max-h-[calc(100svh-2rem)] overflow-y-auto p-0 sm:max-w-4xl"
               : "sm:max-w-md"
           }
@@ -42,6 +52,7 @@ export function AuthDialogProvider({ children }: { children: ReactNode }) {
             mode={mode}
             onModeChange={setMode}
             onSuccess={() => setOpen(false)}
+            onVerificationChange={setVerifying}
           />
         </DialogContent>
       </Dialog>

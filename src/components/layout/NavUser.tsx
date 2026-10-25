@@ -141,7 +141,12 @@ export function NavUser() {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => navigate("/account")}>
+              <DropdownMenuItem
+                onClick={() => {
+                  closeMobileSidebar()
+                  navigate("/account")
+                }}
+              >
                 <BadgeCheckIcon
                 />
                 Account
