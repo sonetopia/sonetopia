@@ -27,6 +27,7 @@ export function AuthDialogProvider({ children }: { children: ReactNode }) {
       {children}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
+          initialFocus={() => document.getElementById("auth-username")}
           className={
             mode === "sign-up"
               ? "max-h-[calc(100svh-2rem)] overflow-y-auto p-0 sm:max-w-4xl"

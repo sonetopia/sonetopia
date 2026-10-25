@@ -21,7 +21,7 @@ import { useTheme } from "@/lib/theme"
 import { useAuth } from "@/lib/auth"
 
 export function NavUser() {
-  const { isMobile } = useSidebar()
+  const { isMobile, setOpenMobile } = useSidebar()
   const { dark, toggle } = useTheme()
   const { user, signOut } = useAuth()
   const { openAuth } = useAuthDialog()
@@ -42,17 +42,61 @@ export function NavUser() {
     navigate("/", { replace: true })
   }
 
+  function closeMobileSidebar() {
+    setOpenMobile(false)
+  }
+
   if (!user) {
     return (
       <SidebarMenu className="mb-1">
         <SidebarMenuItem>
-          <SidebarMenuButton size="lg" onClick={() => openAuth("sign-in")}>
-            <LogIn />
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">Sign in</span>
-              <span className="truncate text-xs">Access your library</span>
-            </div>
-          </SidebarMenuButton>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <SidebarMenuButton
+                  size="lg"
+                  className="aria-expanded:bg-muted group-data-[collapsible=icon]:justify-center"
+                />
+              }
+            >
+              <LogIn />
+              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="truncate font-medium">Guest</span>
+                <span className="truncate text-xs">Menu & settings</span>
+              </div>
+              <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="w-50"
+              side={isMobile ? "bottom" : "right"}
+              align="end"
+              sideOffset={4}
+            >
+              <DropdownMenuItem
+                onClick={() => {
+                  closeMobileSidebar()
+                  navigate("/about")
+                }}
+              >
+                <Info />
+                About Sonetopia
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={toggle}>
+                {dark ? <Sun /> : <Moon />}
+                {dark ? "Light mode" : "Dark mode"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  closeMobileSidebar()
+                  openAuth("sign-in")
+                }}
+              >
+                <LogIn />
+                Sign in
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
     )

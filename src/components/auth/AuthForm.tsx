@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAuth } from "@/lib/auth"
 import { isGithubOAuthConfigured, startGithubOAuth } from "@/lib/github-oauth"
 import { Field, FieldLabel } from "@/components/ui/field"
@@ -61,6 +62,7 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
   })
   const [submitting, setSubmitting] = useState(false)
   const [googleSubmitting, setGoogleSubmitting] = useState(false)
+  const [appleTooltipOpen, setAppleTooltipOpen] = useState(false)
   const [resending, setResending] = useState(false)
   const [cooldown, setCooldown] = useState(0)
   const [verification, setVerification] = useState<{ email: string } | null>(null)
@@ -247,18 +249,35 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
               </Button>
             </div>
             <div className="mx-auto w-full max-w-[400px]">
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                className="h-10 w-full justify-start rounded-sm gap-3 px-3"
-                disabled
-              >
-                <AppleMark />
-                <div className="flex w-full justify-center">
-                  Continue with Apple
-                </div>
-              </Button>
+              <Tooltip open={appleTooltipOpen} onOpenChange={setAppleTooltipOpen}>
+                <TooltipTrigger
+                  delay={0}
+                  render={
+                    <span
+                      className="block w-full"
+                      tabIndex={0}
+                      onPointerEnter={() => setAppleTooltipOpen(true)}
+                      onPointerLeave={() => setAppleTooltipOpen(false)}
+                    />
+                  }
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="h-10 w-full justify-start rounded-sm gap-3 px-3"
+                    disabled
+                  >
+                    <AppleMark />
+                    <div className="flex w-full justify-center">
+                      Continue with Apple
+                    </div>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="data-open:animate-none data-closed:animate-none">
+                  Apple sign-in is coming soon.
+                </TooltipContent>
+              </Tooltip>
             </div>
             <div className="flex items-center gap-3 text-[11px] uppercase tracking-wide text-muted-foreground mt-5">
               <span className="h-px flex-1 bg-border" />
@@ -392,25 +411,20 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
       </CardFooter>
       </div>
       {isSignUp ? (
-        <aside className="flex min-w-0 flex-col gap-8 border-t border-border bg-muted/30 p-5 sm:p-6 md:border-t-0 md:border-l">
-          <div className="flex items-center gap-3">
-            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-background p-1.5 ring-1 ring-border">
-              <img
-                src="/logo-orange-small.png"
-                alt="Sonetopia"
-                className="size-full object-contain"
-              />
-            </span>
-            <span>
+        <aside className="hidden min-w-0 flex-col gap-8 border-border bg-muted/30 p-5 sm:p-6 md:flex md:border-l">
+          <div className="flex flex-1 flex-col justify-center">
+            <div className="flex flex-col justify-center w-full items-center gap-1.5 pb-5">
+              <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-background p-1.5 ring-1 ring-border">
+                <img
+                  src="/logo-orange-small.png"
+                  alt="Sonetopia"
+                  className="size-full object-contain"
+                />
+              </span>
               <span className="block font-heading text-lg font-semibold leading-tight">
                 Sonetopia
               </span>
-              <span className="block text-xs text-muted-foreground">
-                Your sound, everywhere.
-              </span>
-            </span>
-          </div>
-          <div className="flex flex-1 flex-col justify-center">
+            </div>
             <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
               Use an account you already have.
             </p>
@@ -429,18 +443,35 @@ export function AuthForm({ mode, onModeChange, onSuccess }: AuthFormProps) {
                   Continue with GitHub
                 </div>
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                className="h-10 w-full justify-start rounded-sm gap-3 px-3"
-                disabled
-              >
-                <AppleMark />
-                <div className="flex w-full justify-center">
-                  Continue with Apple
-                </div>
-              </Button>
+              <Tooltip open={appleTooltipOpen} onOpenChange={setAppleTooltipOpen}>
+                <TooltipTrigger
+                  delay={0}
+                  render={
+                    <span
+                      className="block w-full"
+                      tabIndex={0}
+                      onPointerEnter={() => setAppleTooltipOpen(true)}
+                      onPointerLeave={() => setAppleTooltipOpen(false)}
+                    />
+                  }
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="h-10 w-full justify-start rounded-sm gap-3 px-3"
+                    disabled
+                  >
+                    <AppleMark />
+                    <div className="flex w-full justify-center">
+                      Continue with Apple
+                    </div>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="data-open:animate-none data-closed:animate-none">
+                  Apple sign-in is coming soon.
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </aside>

@@ -44,7 +44,7 @@ export function TrackFilters({
 }: TrackFiltersProps) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="relative min-w-52 flex-1">
+      <div className="relative basis-full sm:min-w-52 sm:flex-1">
         <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={query}
@@ -71,7 +71,10 @@ export function TrackFilters({
         value={kind}
         onValueChange={(value) => onKindChange(value as KindFilter)}
       >
-        <SelectTrigger aria-label="Filter by audio type">
+        <SelectTrigger
+          aria-label="Filter by audio type"
+          className="min-w-0 flex-1 basis-0 sm:flex-none sm:basis-auto"
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -90,7 +93,10 @@ export function TrackFilters({
         value={sort}
         onValueChange={(value) => onSortChange(value as SortKey)}
       >
-        <SelectTrigger aria-label="Sort audio">
+        <SelectTrigger
+          aria-label="Sort audio"
+          className="min-w-0 flex-1 basis-0 sm:flex-none sm:basis-auto"
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -104,7 +110,9 @@ export function TrackFilters({
         </SelectContent>
       </Select>
 
-      <span className="text-xs text-muted-foreground">{resultCount} tracks</span>
+      <span className="min-w-0 flex-1 basis-0 text-center text-xs sm:flex-none sm:basis-auto border h-8 rounded-lg px-3 py-1 flex items-center justify-center">
+        {resultCount} tracks
+      </span>
     </div>
   )
 }
