@@ -177,7 +177,7 @@ export function AuthForm({
           <CardTitle>Verify your email</CardTitle>
           <CardDescription>
             We sent a verification link to{" "}
-            <span className="font-medium text-foreground">{verification.email}</span>. Open it,
+            <span className="break-all font-medium text-foreground">{verification.email}</span>. Open it,
             then sign in to start using Sonetopia.
           </CardDescription>
         </CardHeader>

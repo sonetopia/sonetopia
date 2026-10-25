@@ -161,6 +161,7 @@ color-scheme: dark;
 
 html {
 @apply font-sans;
+scrollbar-gutter: stable;
 }
 
 body {

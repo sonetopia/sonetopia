@@ -142,7 +142,11 @@ export function GoogleSignInButton({
   return (
     <div
       ref={containerRef}
-      className={disabled ? "pointer-events-none min-h-10 w-full opacity-60" : "min-h-10 w-full"}
+      className={
+        disabled
+          ? "pointer-events-none h-10 w-full overflow-hidden opacity-60"
+          : "h-10 w-full overflow-hidden"
+      }
     />
   )
 }
