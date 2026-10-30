@@ -97,6 +97,7 @@ type PlayerValue = {
   reorderQueue: (from: number, to: number) => void
   moveInQueue: (index: number, direction: -1 | 1) => void
   removeFromQueue: (index: number) => void
+  removeTrackFromQueue: (trackId: string) => void
   clearQueue: () => void
 }
 
@@ -108,6 +109,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const audioRef = useRef<HTMLAudioElement>(null)
   const loadedRef = useRef<string | null>(null)
   const loadingSrcRef = useRef<string | null>(null)
+  const switchingSourceRef = useRef(false)
+  const signedUrlsRef = useRef(new Map<string, string>())
+  const signedUrlRequestsRef = useRef(new Map<string, Promise<string>>())
 
   const [restoredQueue] = useState(() => loadQueueSnapshot(user?.id))
   const [prefs, setPrefs] = useState<PlayerPrefs>(() =>
@@ -156,6 +160,27 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     (patch: Partial<PlayerPrefs>) => setPrefs((prev) => ({ ...prev, ...patch })),
     []
   )
+
+  const getSignedUrl = useCallback((trackId: string) => {
+    const cached = signedUrlsRef.current.get(trackId)
+    if (cached && !signedUrlExpired(cached)) return Promise.resolve(cached)
+    if (cached) signedUrlsRef.current.delete(trackId)
+
+    const pending = signedUrlRequestsRef.current.get(trackId)
+    if (pending) return pending
+
+    const request = getAudio(trackId)
+      .then((fresh) => {
+        const url = mediaUrl(fresh.signedUrl)
+        if (!url) throw new Error("Could not resolve the audio URL")
+        signedUrlsRef.current.set(trackId, url)
+        return url
+      })
+      .finally(() => signedUrlRequestsRef.current.delete(trackId))
+
+    signedUrlRequestsRef.current.set(trackId, request)
+    return request
+  }, [])
 
   const step = useCallback(
     (delta: 1 | -1) => stepIndex(queue.length, currentIndex, delta, repeat),
@@ -230,20 +255,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    const cachedUrl = signedUrlsRef.current.get(current.id)
     const usableUrl =
       playbackSrc?.trackId === current.id && !signedUrlExpired(playbackSrc.url)
         ? playbackSrc.url
-        : null
+        : cachedUrl && !signedUrlExpired(cachedUrl)
+          ? cachedUrl
+          : null
 
     if (!usableUrl) {
       if (loadingSrcRef.current === current.id) return
       loadingSrcRef.current = current.id
-      void getAudio(current.id)
-        .then((fresh) => {
-          const url = mediaUrl(fresh.signedUrl)
-          if (!url) throw new Error("Could not resolve the audio URL")
-          setPlaybackSrc({ trackId: current.id, url })
-        })
+      void getSignedUrl(current.id)
+        .then((url) => setPlaybackSrc({ trackId: current.id, url }))
         .catch(() => {
           loadingSrcRef.current = null
           setIsPlaying(false)
@@ -257,6 +281,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const sameTrack = loadedRef.current?.startsWith(`${current.id}:`) ?? false
       const resumeAt = sameTrack ? audio.currentTime : 0
       loadedRef.current = loadKey
+      switchingSourceRef.current = true
       audio.src = usableUrl
       audio.currentTime = resumeAt
       if (!sameTrack) {
@@ -265,7 +290,57 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
     }
     if (audio.paused) void audio.play().catch(() => setIsPlaying(false))
-  }, [current, isPlaying, playbackSrc])
+  }, [current, isPlaying, playbackSrc, getSignedUrl])
+
+  // Prefetch a few upcoming URLs while playback is active so an ended track can
+  // advance immediately, even when the page is in the background.
+  useEffect(() => {
+    if (!isPlaying || !current) return
+    let index = currentIndex
+    for (let count = 0; count < 3; count++) {
+      const target = stepIndex(queue.length, index, 1, repeat)
+      if (target === -1 || target === currentIndex) break
+      void getSignedUrl(queue[target].id).catch(() => {})
+      index = target
+    }
+  }, [current, currentIndex, getSignedUrl, isPlaying, queue, repeat])
+
+  useEffect(() => {
+    const resume = () => {
+      const audio = audioRef.current
+      if (
+        document.visibilityState !== "visible" ||
+        !isPlaying ||
+        !audio?.paused ||
+        audio.ended ||
+        !audio.src
+      ) {
+        return
+      }
+      void audio.play().catch(() => setIsPlaying(false))
+    }
+    document.addEventListener("visibilitychange", resume)
+    return () => document.removeEventListener("visibilitychange", resume)
+  }, [isPlaying])
+
+  // iOS uses the audio session type to decide whether playback may continue
+  // when the PWA is backgrounded or the screen is locked.
+  useEffect(() => {
+    const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession
+    if (!session) return
+    try {
+      session.type = "playback"
+    } catch {
+      // older WebKit builds do not allow changing the session type
+    }
+    return () => {
+      try {
+        session.type = "auto"
+      } catch {
+        // ignore cleanup failures
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -393,6 +468,35 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [currentIndex]
   )
 
+  const removeTrackFromQueue = useCallback(
+    (trackId: string) => {
+      const removedIndex = storedQueue.findIndex((track) => track.id === trackId)
+      if (removedIndex === -1) return
+
+      const nextQueue = storedQueue.filter((track) => track.id !== trackId)
+      const wasCurrent = storedQueue[currentIndex]?.id === trackId
+      setQueue(nextQueue)
+      signedUrlsRef.current.delete(trackId)
+      signedUrlRequestsRef.current.delete(trackId)
+
+      if (wasCurrent) {
+        if (nextQueue.length === 0) {
+          setCurrentIndex(-1)
+          setIsPlaying(false)
+          return
+        }
+        setCurrentIndex(Math.min(removedIndex, nextQueue.length - 1))
+        return
+      }
+
+      const removedBeforeCurrent = storedQueue
+        .slice(0, currentIndex)
+        .filter((track) => track.id === trackId).length
+      if (removedBeforeCurrent > 0) setCurrentIndex(currentIndex - removedBeforeCurrent)
+    },
+    [currentIndex, storedQueue]
+  )
+
   const clearQueue = useCallback(() => {
     setQueue([])
     setCurrentIndex(-1)
@@ -428,6 +532,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       reorderQueue,
       moveInQueue,
       removeFromQueue,
+      removeTrackFromQueue,
       clearQueue,
     }),
     [
@@ -457,6 +562,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       reorderQueue,
       moveInQueue,
       removeFromQueue,
+      removeTrackFromQueue,
       clearQueue,
     ]
   )
@@ -477,8 +583,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             setTrackDuration(current.id, total)
           }
         }}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
+        onPlay={() => {
+          switchingSourceRef.current = false
+        }}
+        onCanPlay={() => {
+          switchingSourceRef.current = false
+        }}
+        onPause={(event) => {
+          const audio = event.currentTarget
+          if (switchingSourceRef.current || audio.ended) return
+          if (document.visibilityState === "hidden") return
+          setIsPlaying(false)
+        }}
         onEnded={next}
       />
     </PlayerContext.Provider>

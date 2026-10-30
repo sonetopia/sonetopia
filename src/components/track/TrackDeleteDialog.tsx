@@ -1,5 +1,6 @@
 import { ConfirmDialog } from "@/components/ui/confirmation-dialog"
 import { useLibrary, type Track } from "@/lib/library"
+import { usePlayer } from "@/components/player/PlayerProvider"
 import { Trash2Icon } from "lucide-react"
 
 type TrackDeleteDialogProps = {
@@ -10,6 +11,7 @@ type TrackDeleteDialogProps = {
 
 export function TrackDeleteDialog({ track, open, onOpenChange }: TrackDeleteDialogProps) {
   const { removeTrack } = useLibrary()
+  const { removeTrackFromQueue } = usePlayer()
 
   return (
     <ConfirmDialog
@@ -20,8 +22,11 @@ export function TrackDeleteDialog({ track, open, onOpenChange }: TrackDeleteDial
       title="Delete Track"
       description={`Are you sure you want to delete "${track?.title}"? This action cannot be undone.`}
       confirmLabel="Delete"
-      onConfirm={() => removeTrack(track.id)}
+      onConfirm={async () => {
+        await removeTrack(track.id)
+        removeTrackFromQueue(track.id)
+      }}
       pendingLabel="Deleting..."
     />
-  );
+  )
 }
