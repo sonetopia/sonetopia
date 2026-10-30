@@ -11,6 +11,7 @@ import {
 import { AUDIO_KINDS, useLibrary, type Track } from "@/lib/library"
 import { shuffleWithFirst, stepIndex, type RepeatMode } from "@/lib/playback"
 import { loadJSON, saveJSON } from "@/lib/persist"
+import { useCoverUrl } from "@/lib/covers"
 import { useAuth } from "@/lib/auth"
 
 type PlayerPrefs = {
@@ -111,6 +112,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [storedQueue, trackById]
   )
   const current = currentIndex >= 0 ? queue[currentIndex] : undefined
+  const currentCoverUrl = useCoverUrl(current)
 
   useEffect(() => saveJSON(PLAYER_KEY, prefs), [prefs])
 
@@ -236,8 +238,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       title: current.title,
       artist: current.artist,
       album: AUDIO_KINDS[current.kind].label,
-      artwork: current.coverUrl
-        ? [{ src: current.coverUrl }]
+      artwork: currentCoverUrl
+        ? [{ src: currentCoverUrl }]
         : [
             { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
             { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
@@ -254,7 +256,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     return () => {
       for (const action of actions) navigator.mediaSession.setActionHandler(action, null)
     }
-  }, [current, next, previous, seek])
+  }, [current, currentCoverUrl, next, previous, seek])
 
   useEffect(() => {
     if ("mediaSession" in navigator) {

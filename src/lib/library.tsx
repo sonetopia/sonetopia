@@ -27,7 +27,7 @@ import {
   type AudioResponse,
   type UpdateAudioInput,
 } from "@/api/audio"
-import { forgetCover, resolveCoverUrl } from "@/lib/covers"
+import { forgetCover } from "@/lib/covers"
 import { useAuth } from "@/lib/auth"
 import {
   addPlaylistAudio,
@@ -60,6 +60,7 @@ export type Track = {
   duration: number
   tags: string[]
   addedAt: string
+  coverVersion?: number
   coverUrl?: string
 }
 
@@ -154,7 +155,7 @@ async function trackFromDetail(audio: AudioResponse): Promise<Track> {
     duration: audio.duration ?? 0,
     tags: [],
     addedAt: audio.createdAt,
-    coverUrl: await resolveCoverUrl(audio),
+    coverVersion: audio.coverVersion ?? undefined,
   }
 }
 

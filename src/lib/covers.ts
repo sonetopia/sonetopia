@@ -1,4 +1,5 @@
-import { getAudioCover, mediaUrl, type AudioResponse } from "@/api/audio"
+import { useEffect, useState } from "react"
+import { getAudioCover, mediaUrl } from "@/api/audio"
 import {
   readCachedCover,
   removeCachedCover,
@@ -17,7 +18,13 @@ const objectUrls = new Map<string, { version: number; url: string }>()
  * 2. matching IndexedDB entry -> reuse the cached blob (no request);
  * 3. version mismatch -> fetch the signed URL + blob and refresh the cache.
  */
-export async function resolveCoverUrl(audio: AudioResponse): Promise<string | undefined> {
+export type CoverSource = {
+  id: string
+  coverVersion?: number | null
+  coverUrl?: string
+}
+
+export async function resolveCoverUrl(audio: CoverSource): Promise<string | undefined> {
   const version = audio.coverVersion ?? 0
   if (version <= 0) {
     releaseCoverUrl(audio.id)
@@ -52,6 +59,31 @@ export async function resolveCoverUrl(audio: AudioResponse): Promise<string | un
     cachedAt: Date.now(),
   })
   return objectUrlFor(audio.id, freshVersion, blob)
+}
+
+/**
+ * Resolves a cover only when the component that needs it is rendered.
+ * Cache hits still produce a fresh `blob:` URL, so they show up in DevTools
+ * Network without making a network request.
+ */
+export function useCoverUrl(track?: CoverSource | null) {
+  const key = track ? `${track.id}:${track.coverVersion ?? 0}` : ""
+  const [resolved, setResolved] = useState<{ key: string; url: string }>()
+
+  useEffect(() => {
+    if (!track || track.coverUrl || !(track.coverVersion ?? 0)) return
+    let cancelled = false
+    void resolveCoverUrl(track).then((url) => {
+      if (!cancelled && url) setResolved({ key, url })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!track) return undefined
+  if (track.coverUrl) return track.coverUrl
+  return resolved?.key === key ? resolved.url : undefined
 }
 
 export function releaseCoverUrl(audioId: string) {

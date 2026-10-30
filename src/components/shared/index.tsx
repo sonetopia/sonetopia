@@ -4,6 +4,7 @@ import { cn } from "cn"
 import { AudioLines, Pause, Play, type LucideIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { AUDIO_KINDS, type AudioKind, type Track } from "@/lib/library"
+import { useCoverUrl } from "@/lib/covers"
 import { useIsMobile } from "@/hooks/use-mobile"
 
 export function Brand({
@@ -31,11 +32,12 @@ export function Brand({
 export function AudioCover({ track, className }: { track: Track; className?: string }) {
   const meta = AUDIO_KINDS[track.kind]
   const Icon = meta.icon
+  const coverUrl = useCoverUrl(track)
 
-  if (track.coverUrl) {
+  if (coverUrl) {
     return (
       <img
-        src={track.coverUrl}
+        src={coverUrl}
         alt=""
         className={cn("size-10 shrink-0 rounded-md object-cover", className)}
       />
