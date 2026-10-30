@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react"
+import { getAudio, mediaUrl } from "@/api/audio"
 import { AUDIO_KINDS, useLibrary, type Track } from "@/lib/library"
 import { shuffleWithFirst, stepIndex, type RepeatMode } from "@/lib/playback"
 import { loadJSON, saveJSON } from "@/lib/persist"
@@ -23,6 +24,20 @@ type PlayerPrefs = {
 const DEFAULT_PREFS: PlayerPrefs = { volume: 0.8, repeat: "off", shuffle: false }
 const PLAYER_KEY = "sonetopia:player"
 const QUEUE_KEY = "sonetopia:queue"
+const SIGNED_URL_REFRESH_MARGIN_MS = 60_000
+
+/** Signed media URLs carry their expiry in `expires` (epoch seconds). */
+function signedUrlExpired(url: string) {
+  if (!url) return true
+  try {
+    const expires = new URL(url, window.location.href).searchParams.get("expires")
+    if (!expires) return false
+    const expiresAt = Number(expires) * 1000
+    return !Number.isFinite(expiresAt) || expiresAt <= Date.now() + SIGNED_URL_REFRESH_MARGIN_MS
+  } catch {
+    return false
+  }
+}
 
 type QueueSnapshot = {
   userId: string
@@ -92,6 +107,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const { setTrackDuration, trackById } = useLibrary()
   const audioRef = useRef<HTMLAudioElement>(null)
   const loadedRef = useRef<string | null>(null)
+  const loadingSrcRef = useRef<string | null>(null)
 
   const [restoredQueue] = useState(() => loadQueueSnapshot(user?.id))
   const [prefs, setPrefs] = useState<PlayerPrefs>(() =>
@@ -102,6 +118,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [storedQueue, setQueue] = useState<Track[]>(restoredQueue?.tracks ?? [])
   const [currentIndex, setCurrentIndex] = useState(restoredQueue?.currentIndex ?? -1)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [playbackSrc, setPlaybackSrc] = useState<{ trackId: string; url: string } | null>(null)
   const [position, setPosition] = useState(0)
   const [duration, setDuration] = useState(0)
   const [nowPlayingOpen, setNowPlayingOpen] = useState(false)
@@ -196,31 +213,59 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setPosition(seconds)
   }, [])
 
-  // load a new source only when its identity or signed URL changes, so re-renders never restart playback
+  // Signed URLs are requested only when a track is actually played.
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
+
     if (!current) {
       loadedRef.current = null
+      loadingSrcRef.current = null
       audio.removeAttribute("src")
       return
     }
-    const loadKey = `${current.id}:${current.src}`
-    if (loadedRef.current === loadKey) return
-    loadedRef.current = loadKey
-    audio.src = current.src
-    audio.currentTime = 0
-    setPosition(0)
-    setDuration(current.duration || 0)
-    if (isPlaying) void audio.play().catch(() => setIsPlaying(false))
-  }, [current, isPlaying])
 
-  useEffect(() => {
-    const audio = audioRef.current
-    if (!audio) return
-    if (isPlaying) void audio.play().catch(() => setIsPlaying(false))
-    else audio.pause()
-  }, [isPlaying])
+    if (!isPlaying) {
+      audio.pause()
+      return
+    }
+
+    const usableUrl =
+      playbackSrc?.trackId === current.id && !signedUrlExpired(playbackSrc.url)
+        ? playbackSrc.url
+        : null
+
+    if (!usableUrl) {
+      if (loadingSrcRef.current === current.id) return
+      loadingSrcRef.current = current.id
+      void getAudio(current.id)
+        .then((fresh) => {
+          const url = mediaUrl(fresh.signedUrl)
+          if (!url) throw new Error("Could not resolve the audio URL")
+          setPlaybackSrc({ trackId: current.id, url })
+        })
+        .catch(() => {
+          loadingSrcRef.current = null
+          setIsPlaying(false)
+        })
+      return
+    }
+
+    loadingSrcRef.current = null
+    const loadKey = `${current.id}:${usableUrl}`
+    if (loadedRef.current !== loadKey) {
+      const sameTrack = loadedRef.current?.startsWith(`${current.id}:`) ?? false
+      const resumeAt = sameTrack ? audio.currentTime : 0
+      loadedRef.current = loadKey
+      audio.src = usableUrl
+      audio.currentTime = resumeAt
+      if (!sameTrack) {
+        setPosition(0)
+        setDuration(current.duration || 0)
+      }
+    }
+    if (audio.paused) void audio.play().catch(() => setIsPlaying(false))
+  }, [current, isPlaying, playbackSrc])
 
   useEffect(() => {
     const audio = audioRef.current

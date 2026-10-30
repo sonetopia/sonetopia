@@ -20,9 +20,7 @@ import {
   createAudio,
   createAudioFromTemp,
   deleteAudio,
-  getAudio,
   listAudio,
-  mediaUrl,
   updateAudio,
   type AudioResponse,
   type UpdateAudioInput,
@@ -56,7 +54,6 @@ export type Track = {
   artist: string
   album: string
   kind: AudioKind
-  src: string
   duration: number
   tags: string[]
   addedAt: string
@@ -144,24 +141,18 @@ function toAudioKind(type: string | null | undefined): AudioKind {
   return AUDIO_KIND_VALUES.find((kind) => kind === normalised) ?? "other"
 }
 
-async function trackFromDetail(audio: AudioResponse): Promise<Track> {
+function trackFromDetail(audio: AudioResponse): Track {
   return {
     id: audio.id,
     title: audio.title,
     artist: audio.author?.trim() || "Unknown artist",
     album: audio.album?.trim() ?? "",
     kind: toAudioKind(audio.type),
-    src: mediaUrl(audio.signedUrl) ?? "",
     duration: audio.duration ?? 0,
     tags: [],
     addedAt: audio.createdAt,
     coverVersion: audio.coverVersion ?? undefined,
   }
-}
-
-async function hydrateTrack(item: AudioResponse): Promise<Track> {
-  const detail = await getAudio(item.id).catch(() => null)
-  return trackFromDetail(detail ?? item)
 }
 
 function toPlaylist(row: PlaylistResponse, trackIds: string[]): Playlist {
@@ -228,7 +219,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     let cancelled = false
 
     const audio = listAudio()
-      .then((items) => Promise.all(items.map(hydrateTrack)))
+      .then((items) => items.map(trackFromDetail))
       .then((apiTracks) => {
         if (cancelled) return
         setTracks(apiTracks)
@@ -271,7 +262,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           year: input.year,
           cover: input.cover,
         })
-        const track = await trackFromDetail(await getAudio(audio.id))
+        const track = trackFromDetail(audio)
         created.push(track)
         setTracks((prev) => [track, ...prev])
       } catch (cause) {
@@ -291,7 +282,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       album: input.album?.trim() || undefined,
       year: input.year,
     })
-    const track = await trackFromDetail(await getAudio(audio.id))
+    const track = trackFromDetail(audio)
     setTracks((prev) => [track, ...prev])
   }, [])
 
@@ -315,8 +306,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const updateTrack = useCallback(async (id: string, input: UpdateAudioInput) => {
-    await updateAudio(id, input)
-    const updated = await trackFromDetail(await getAudio(id))
+    const updated = trackFromDetail(await updateAudio(id, input))
     setTracks((prev) =>
       prev.map((track) =>
         track.id === id ? { ...updated, duration: updated.duration || track.duration } : track
