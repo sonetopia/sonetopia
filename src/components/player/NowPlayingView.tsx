@@ -29,6 +29,8 @@ const REPEAT_LABEL: Record<RepeatMode, string> = {
 }
 
 const timeLabel = (seconds: number) => (seconds > 0 ? formatDuration(seconds) : "0:00")
+const QUEUE_ROW_HEIGHT = 60
+const QUEUE_OVERSCAN = 6
 
 type NowPlayingViewProps = {
   open: boolean
@@ -58,19 +60,42 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
     clearQueue,
   } = usePlayer()
   const [scrub, setScrub] = useState<number | null>(null)
-  const activeRef = useRef<HTMLLIElement>(null)
+  const queueRef = useRef<HTMLUListElement>(null)
+  const [queueScrollTop, setQueueScrollTop] = useState(0)
+  const [queueViewportHeight, setQueueViewportHeight] = useState(480)
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
   const [dropIndex, setDropIndex] = useState<number | null>(null)
 
   useEffect(() => {
     if (!open) return
+    const list = queueRef.current
+    if (!list) return
+
     const frame = requestAnimationFrame(() => {
-      activeRef.current?.scrollIntoView({ block: "nearest" })
+      setQueueViewportHeight(list.clientHeight)
+      if (currentIndex < 0) return
+      const target = currentIndex * QUEUE_ROW_HEIGHT - list.clientHeight / 2 + QUEUE_ROW_HEIGHT / 2
+      list.scrollTop = Math.max(0, target)
+      setQueueScrollTop(list.scrollTop)
     })
-    return () => cancelAnimationFrame(frame)
+    const observer = new ResizeObserver(() => setQueueViewportHeight(list.clientHeight))
+    observer.observe(list)
+
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+    }
   }, [open, currentIndex])
 
   if (!current) return null
+
+  const firstVisible = Math.floor(queueScrollTop / QUEUE_ROW_HEIGHT)
+  const queueStart = Math.min(queue.length, Math.max(0, firstVisible - QUEUE_OVERSCAN))
+  const queueEnd = Math.min(
+    queue.length,
+    queueStart + Math.ceil(queueViewportHeight / QUEUE_ROW_HEIGHT) + QUEUE_OVERSCAN * 2
+  )
+  const visibleQueue = queue.slice(queueStart, queueEnd)
 
   function handleDragStart(event: DragEvent<HTMLDivElement>, index: number) {
     setDraggingIndex(index)
@@ -223,59 +248,72 @@ export function NowPlayingView({ open, onOpenChange }: NowPlayingViewProps) {
                 </Button>
               ) : null}
             </div>
-            <ul className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+            <ul
+              ref={queueRef}
+              onScroll={(event) => setQueueScrollTop(event.currentTarget.scrollTop)}
+              className="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-2 pb-3"
+            >
               {queue.length === 0 ? (
                 <li className="px-2 py-8 text-center text-xs text-muted-foreground">
                   Nothing queued yet. Add tracks from your library or a playlist.
                 </li>
               ) : (
-                queue.map((track, index) => {
-                  const active = index === currentIndex
-                  const play = () => (active ? toggle() : jumpTo(index))
-                  return (
-                    <li
-                      key={`${track.id}-${index}`}
-                      ref={active ? activeRef : undefined}
-                      aria-current={active ? "true" : undefined}
-                      onDragOver={(event) => handleDragOver(event, index)}
-                      onDrop={(event) => handleDrop(event, index)}
-                      className={cn(
-                        "flex items-center gap-2 rounded-lg p-2 pr-0.5 hover:bg-accent/60",
-                        active && "bg-accent/60",
-                        draggingIndex === index && "opacity-50",
-                        dropIndex === index && draggingIndex !== index && "ring-2 ring-primary/40"
-                      )}
-                    >
-                      <CoverPlayButton
-                        track={track}
-                        playing={active && isPlaying}
-                        onToggle={play}
-                        className="size-10"
-                      />
-                      <div
-                        draggable
-                        onDragStart={(event) => handleDragStart(event, index)}
-                        onDragEnd={handleDragEnd}
-                        title="Drag to reorder"
-                        className="flex min-w-0 flex-1 cursor-grab select-none items-center gap-2 active:cursor-grabbing"
+                <>
+                  {queueStart > 0 ? (
+                    <li aria-hidden style={{ height: queueStart * QUEUE_ROW_HEIGHT }} />
+                  ) : null}
+                  {visibleQueue.map((track, offset) => {
+                    const index = queueStart + offset
+                    const active = index === currentIndex
+                    const play = () => (active ? toggle() : jumpTo(index))
+                    return (
+                      <li
+                        key={`${track.id}-${index}`}
+                        aria-current={active ? "true" : undefined}
+                        onDragOver={(event) => handleDragOver(event, index)}
+                        onDrop={(event) => handleDrop(event, index)}
+                        style={{ height: QUEUE_ROW_HEIGHT }}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg p-2 pr-0.5 hover:bg-accent/60",
+                          active && "bg-accent/60",
+                          draggingIndex === index && "opacity-50",
+                          dropIndex === index && draggingIndex !== index && "ring-2 ring-primary/40"
+                        )}
                       >
-                        <div className="min-w-0 flex-1 flex flex-col gap-0.25 overflow-hidden">
-                          <p className={cn("truncate text-sm", active && "font-medium text-primary")}>
-                            {track.title}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {active ? (isPlaying ? "Playing · " : "Paused · ") : null}
-                            {track.artist}
-                          </p>
+                        <CoverPlayButton
+                          track={track}
+                          playing={active && isPlaying}
+                          onToggle={play}
+                          className="size-10"
+                        />
+                        <div
+                          draggable
+                          onDragStart={(event) => handleDragStart(event, index)}
+                          onDragEnd={handleDragEnd}
+                          title="Drag to reorder"
+                          className="flex min-w-0 flex-1 cursor-grab select-none items-center gap-2 active:cursor-grabbing"
+                        >
+                          <div className="min-w-0 flex-1 flex flex-col gap-0.25 overflow-hidden">
+                            <p className={cn("truncate text-sm", active && "font-medium text-primary")}>
+                              {track.title}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {active ? (isPlaying ? "Playing \u00b7 " : "Paused \u00b7 ") : null}
+                              {track.artist}
+                            </p>
+                          </div>
+                          <span className="text-xs tabular-nums text-muted-foreground">
+                            {formatDuration(track.duration)}
+                          </span>
                         </div>
-                        <span className="text-xs tabular-nums text-muted-foreground">
-                          {formatDuration(track.duration)}
-                        </span>
-                      </div>
-                      <QueueTrackActions index={index} isLast={index === queue.length - 1} />
-                    </li>
-                  )
-                })
+                        <QueueTrackActions index={index} isLast={index === queue.length - 1} />
+                      </li>
+                    )
+                  })}
+                  {queueEnd < queue.length ? (
+                    <li aria-hidden style={{ height: (queue.length - queueEnd) * QUEUE_ROW_HEIGHT }} />
+                  ) : null}
+                </>
               )}
             </ul>
           </aside>
