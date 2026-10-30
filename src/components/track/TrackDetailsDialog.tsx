@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react"
-import { LoaderCircle } from "lucide-react"
 import { getAudio, type AudioResponse } from "@/api/audio"
 import { AudioCover } from "@/components/shared"
 import { notify } from "@/components/ui/notification-toast"
@@ -116,15 +115,10 @@ export function TrackDetailsDialog({ track, open, onOpenChange }: TrackDetailsDi
     </div>
   )
 
-  const body = loading ? (
-    <p className="flex items-center gap-2 text-xs text-muted-foreground">
-      <LoaderCircle className="size-3.5 animate-spin" />
-      Loading details...
-    </p>
-  ) : (
-    <div className="flex flex-col gap-2 text-sm">
+  const body = (
+    <div aria-busy={loading} className="flex flex-col gap-2 text-sm">
       {rows.map((row) => (
-        <div key={row.label} className="flex items-start justify-between gap-4">
+        <div key={row.label} className="flex min-h-5 items-start justify-between gap-4">
           <span className="shrink-0 text-muted-foreground">{row.label}</span>
           <span className="min-w-0 text-right break-words">{row.value}</span>
         </div>
