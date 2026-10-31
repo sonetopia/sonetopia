@@ -1,7 +1,8 @@
-import { BadgeCheckIcon, ChevronsUpDown, Info, LogIn, LogOut, Moon, Sun } from "lucide-react"
+import { BadgeCheckIcon, Info, LogIn, LogOut, Moon, Sun } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useAuthDialog } from "@/components/auth/AuthDialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,17 +12,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar"
 import { useTheme } from "@/lib/theme"
 import { useAuth } from "@/lib/auth"
 
 export function NavUser() {
-  const { isMobile, setOpenMobile } = useSidebar()
   const { dark, toggle } = useTheme()
   const { user, signOut } = useAuth()
   const { openAuth } = useAuthDialog()
@@ -29,7 +23,6 @@ export function NavUser() {
 
   const name = user?.name || user?.username || "Account"
   const email = user?.email ?? ""
-
   const initials = name
     .split(" ")
     .map((part) => part[0])
@@ -42,113 +35,44 @@ export function NavUser() {
     navigate("/", { replace: true })
   }
 
-  function closeMobileSidebar() {
-    setOpenMobile(false)
-  }
-
-  if (!user) {
-    return (
-      <SidebarMenu className="mb-1">
-        <SidebarMenuItem>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <SidebarMenuButton
-                  size="lg"
-                  className="aria-expanded:bg-muted group-data-[collapsible=icon]:justify-center"
-                />
-              }
-            >
-              <LogIn />
-              <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-medium">Guest</span>
-                <span className="truncate text-xs">Menu & settings</span>
-              </div>
-              <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-50"
-              side={isMobile ? "bottom" : "right"}
-              align="end"
-              sideOffset={4}
-            >
-              <DropdownMenuItem
-                onClick={() => {
-                  closeMobileSidebar()
-                  navigate("/about")
-                }}
-              >
-                <Info />
-                About Sonetopia
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={toggle}>
-                {dark ? <Sun /> : <Moon />}
-                {dark ? "Light mode" : "Dark mode"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => {
-                  closeMobileSidebar()
-                  openAuth("sign-in")
-                }}
-              >
-                <LogIn />
-                Sign in
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </SidebarMenuItem>
-      </SidebarMenu>
-    )
-  }
-
   return (
-    <SidebarMenu className="mb-1">
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <SidebarMenuButton size="lg" className="aria-expanded:bg-muted" />
-            }
-          >
-            <Avatar>
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{name}</span>
-              <span className="truncate text-xs">{email}</span>
-            </div>
-            <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-50"
-            side={isMobile ? "bottom" : "right"}
-            align="end"
-            sideOffset={4}
-          >
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-9 rounded-full p-0 aria-expanded:bg-muted"
+            aria-label={user ? "Account menu" : "Guest menu"}
+          />
+        }
+      >
+        <Avatar className="size-8">
+          <AvatarFallback className="bg-primary font-medium text-primary-foreground">
+            {user ? initials : "G"}
+          </AvatarFallback>
+        </Avatar>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-48" side="bottom" align="end" sideOffset={6}>
+        {user ? (
+          <>
             <DropdownMenuGroup>
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar>
                     <AvatarFallback>{initials}</AvatarFallback>
                   </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
+                  <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{name}</span>
-                    <span className="truncate text-xs">{email}</span>
+                    <span className="truncate text-xs text-muted-foreground">{email}</span>
                   </div>
                 </div>
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem
-                onClick={() => {
-                  closeMobileSidebar()
-                  navigate("/account")
-                }}
-              >
-                <BadgeCheckIcon
-                />
+              <DropdownMenuItem onClick={() => navigate("/account")}>
+                <BadgeCheckIcon />
                 Account
               </DropdownMenuItem>
               <DropdownMenuItem onClick={toggle}>
@@ -158,17 +82,32 @@ export function NavUser() {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate("/about")}>
-              <Info
-              />
+              <Info />
               About Sonetopia
             </DropdownMenuItem>
             <DropdownMenuItem variant="destructive" onClick={handleSignOut}>
               <LogOut />
               Sign out
             </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+          </>
+        ) : (
+          <>
+            <DropdownMenuItem onClick={() => navigate("/about")}>
+              <Info />
+              About Sonetopia
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={toggle}>
+              {dark ? <Sun /> : <Moon />}
+              {dark ? "Light mode" : "Dark mode"}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => openAuth("sign-in")}>
+              <LogIn />
+              Sign in
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

@@ -10,7 +10,6 @@ import {
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -20,7 +19,6 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { NavUser } from "@/components/layout/NavUser"
 import { PlaylistForm } from "@/components/playlist/PlaylistForm"
 import { usePlayer } from "@/components/player/PlayerProvider"
 import { Separator } from "@/components/ui/separator"
@@ -134,9 +132,6 @@ export function AppSidebar() {
           </>
         ) : null}
       </SidebarContent>
-      <SidebarFooter>
-        <NavUser />
-      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )
