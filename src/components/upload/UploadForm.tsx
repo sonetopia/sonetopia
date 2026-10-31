@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent, type FormEvent } from "react"
+import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react"
 import { cn } from "cn"
 import {
   ChevronDown,
@@ -6,6 +6,7 @@ import {
   HardDriveUpload,
   ImagePlus,
   Link2,
+  LoaderCircle,
   Trash2,
   Upload,
   X,
@@ -99,6 +100,15 @@ export function UploadForm() {
   const [fetched, setFetched] = useState<FetchedDraft | null>(null)
   const [fetching, setFetching] = useState(false)
   const [withThumbnail, setWithThumbnail] = useState(true)
+
+  useEffect(() => {
+    if (!fetching) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [fetching])
 
   function addFiles(files: File[]) {
     const rejected: string[] = []
@@ -736,6 +746,26 @@ export function UploadForm() {
         </Button>
       </div>
       </form>
+      {fetching ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed inset-0 z-[100] grid place-items-center bg-background/85 px-4 backdrop-blur-sm"
+        >
+          <div className="flex w-full max-w-sm flex-col items-center gap-3 rounded-xl border bg-card p-6 text-center shadow-lg">
+            <LoaderCircle className="size-8 animate-spin text-primary" />
+            <div className="flex flex-col gap-1">
+              <p className="font-medium">Fetching audio...</p>
+              <p className="text-sm text-muted-foreground">
+                Downloading and preparing the file. Keep this page open.
+              </p>
+            </div>
+            <p className="max-w-full truncate text-xs text-muted-foreground" title={url}>
+              {url}
+            </p>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
