@@ -12,6 +12,7 @@ import {
   login as loginRequest,
   loginWithGithub as loginWithGithubRequest,
   loginWithGoogle as loginWithGoogleRequest,
+  logout as logoutRequest,
   register as registerRequest,
   resendVerification as resendVerificationRequest,
   updateCurrentUser as updateCurrentUserRequest,
@@ -22,8 +23,8 @@ import {
   clearSession,
   getStoredSession,
   saveSession,
+  sessionFromAuth,
   UNAUTHORIZED_EVENT,
-  type AuthSession,
   type AuthUser,
 } from "@/lib/session"
 
@@ -55,18 +56,6 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const AuthContext = createContext<AuthValue | null>(null)
 
-function toSession(auth: AuthResponse): AuthSession {
-  return {
-    token: auth.token,
-    tokenType: auth.tokenType || "Bearer",
-    expiresAt:
-      typeof auth.expiresIn === "number" && auth.expiresIn > 0
-        ? Date.now() + auth.expiresIn * 1000
-        : 0,
-    user: auth.user,
-  }
-}
-
 function errorMessage(cause: unknown) {
   return cause instanceof Error ? cause.message : "Something went wrong. Please try again."
 }
@@ -76,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(() => Boolean(getStoredSession()))
 
   const applyAuthResponse = useCallback((auth: AuthResponse) => {
-    const next = toSession(auth)
+    const next = sessionFromAuth(auth)
     saveSession(next)
     setUser(next.user)
     setLoading(false)
@@ -160,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback<AuthValue["signIn"]>(
     async (input) => {
       const username = input.username.trim()
-      if (!username) return { ok: false, error: "Please enter your username." }
+      if (!username) return { ok: false, error: "Please enter your username or email." }
       if (!input.password) return { ok: false, error: "Please enter your password." }
 
       try {
@@ -258,6 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signOut = useCallback(() => {
+    void logoutRequest().catch(() => {})
     clearSession()
     setUser(undefined)
     setLoading(false)

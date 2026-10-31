@@ -19,6 +19,13 @@ export type AuthSession = {
   user: AuthUser
 }
 
+export type SessionSource = {
+  token: string
+  tokenType?: string
+  expiresIn?: number
+  user: AuthUser
+}
+
 export const SESSION_KEY = "sonetopia:session"
 export const UNAUTHORIZED_EVENT = "sonetopia:unauthorized"
 
@@ -31,12 +38,19 @@ export function getStoredSession(): AuthSession | null {
     return null
   }
 
-  if (session.expiresAt > 0 && session.expiresAt <= Date.now()) {
-    clearSession()
-    return null
-  }
-
   return session
+}
+
+export function sessionFromAuth(auth: SessionSource): AuthSession {
+  return {
+    token: auth.token,
+    tokenType: auth.tokenType || "Bearer",
+    expiresAt:
+      typeof auth.expiresIn === "number" && auth.expiresIn > 0
+        ? Date.now() + auth.expiresIn * 1000
+        : 0,
+    user: auth.user,
+  }
 }
 
 export function saveSession(session: AuthSession) {

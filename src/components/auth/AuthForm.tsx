@@ -319,15 +319,17 @@ export function AuthForm({
           ) : null}
 
           <Field>
-            <FieldLabel htmlFor="auth-username">Username</FieldLabel>
+            <FieldLabel htmlFor="auth-username">
+              {isSignUp ? "Username" : "Username or email"}
+            </FieldLabel>
             <Input
               id="auth-username"
               value={values.username}
               autoComplete="username"
-              placeholder="Your username"
+              placeholder={isSignUp ? "Your username" : "Username or email"}
               required
-              minLength={3}
-              maxLength={50}
+              minLength={isSignUp ? 3 : undefined}
+              maxLength={isSignUp ? 50 : 254}
               onChange={(event) =>
                 setValues((prev) => ({ ...prev, username: event.target.value }))
               }

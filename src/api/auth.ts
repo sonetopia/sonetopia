@@ -8,6 +8,7 @@ export type AuthResponse = {
   token: string
   tokenType: string
   expiresIn: number
+  refreshTokenExpiresIn?: number
   user: UserResponse
 }
 
@@ -50,7 +51,7 @@ export async function login(input: LoginInput) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     },
-    { authenticated: false }
+    { authenticated: false, credentials: "include" }
   )
   if (!auth) throw new Error("Login failed")
   return auth
@@ -64,7 +65,7 @@ export async function register(input: RegisterInput) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     },
-    { authenticated: false }
+    { authenticated: false, credentials: "include" }
   )
   if (!auth) throw new Error("Registration failed")
   return auth
@@ -78,7 +79,7 @@ export async function loginWithGoogle(input: GoogleLoginInput) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     },
-    { authenticated: false }
+    { authenticated: false, credentials: "include" }
   )
   if (!auth) throw new Error("Google sign-in failed")
   return auth
@@ -92,7 +93,7 @@ export async function loginWithGithub(input: GithubLoginInput) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
     },
-    { authenticated: false }
+    { authenticated: false, credentials: "include" }
   )
   if (!auth) throw new Error("GitHub sign-in failed")
   return auth
@@ -146,4 +147,12 @@ export async function updateCurrentUser(input: UpdateUserInput) {
 
 export async function deleteCurrentUser() {
   await requestRoot<unknown>("/me", { method: "DELETE" })
+}
+
+export async function logout() {
+  await requestRoot<unknown>(
+    "/auth/logout",
+    { method: "POST" },
+    { authenticated: false, notifyUnauthorized: false, credentials: "include" }
+  )
 }

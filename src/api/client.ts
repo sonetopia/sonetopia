@@ -1,14 +1,8 @@
-import { getAccessToken, notifyUnauthorized } from "@/lib/session"
+import { apiRootUrl, apiUrl, mediaUrl } from "@/api/config"
+import { getAccessToken, getStoredSession, notifyUnauthorized } from "@/lib/session"
+import { refreshAccessToken } from "@/lib/token-refresh"
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "/api/v1").replace(/\/+$/, "")
-const API_ORIGIN = /^https?:\/\//i.test(API_BASE) ? new URL(API_BASE).origin : null
-const API_ROOT = API_BASE.replace(/\/v1$/i, "")
-
-const joinUrl = (base: string, path: string) =>
-  `${base}${path.startsWith("/") ? "" : "/"}${path}`
-
-export const apiUrl = (path: string) => joinUrl(API_BASE, path)
-export const apiRootUrl = (path: string) => joinUrl(API_ROOT, path)
+export { apiRootUrl, apiUrl, mediaUrl }
 
 export type WebResponse<T> = {
   data: T | null
@@ -28,6 +22,7 @@ export class ApiError extends Error {
 type RequestOptions = {
   authenticated?: boolean
   notifyUnauthorized?: boolean
+  credentials?: RequestCredentials
 }
 
 async function send<T>(
@@ -35,38 +30,44 @@ async function send<T>(
   init: RequestInit | undefined,
   options: RequestOptions = {}
 ): Promise<T | null> {
-  const headers = new Headers(init?.headers)
-  if (!headers.has("Accept")) headers.set("Accept", "application/json")
+  const canRefresh = options.authenticated !== false
+  let refreshed = false
 
-  const token = options.authenticated === false ? null : getAccessToken()
-  if (token) headers.set("Authorization", `Bearer ${token}`)
+  while (true) {
+    const headers = new Headers(init?.headers)
+    if (!headers.has("Accept")) headers.set("Accept", "application/json")
 
-  const response = await fetch(url, { ...init, headers })
-  const text = await response.text()
-  let body: WebResponse<T> | null = null
+    const token = options.authenticated === false ? null : getAccessToken()
+    if (token) headers.set("Authorization", `Bearer ${token}`)
+    else headers.delete("Authorization")
 
-  if (text) {
-    try {
-      body = JSON.parse(text) as WebResponse<T>
-    } catch {
-      if (response.ok) throw new Error("The API returned an invalid response")
+    const response = await fetch(url, { ...init, headers, credentials: options.credentials })
+    const text = await response.text()
+    let body: WebResponse<T> | null = null
+
+    if (text) {
+      try {
+        body = JSON.parse(text) as WebResponse<T>
+      } catch {
+        if (response.ok) throw new Error("The API returned an invalid response")
+      }
     }
-  }
 
-  if (!response.ok) {
-    if (
-      response.status === 401 &&
-      options.authenticated !== false &&
-      options.notifyUnauthorized !== false
-    ) {
-      notifyUnauthorized()
+    if (!response.ok) {
+      if (response.status === 401 && canRefresh) {
+        if (!refreshed && getStoredSession() && (await refreshAccessToken())) {
+          refreshed = true
+          continue
+        }
+        if (options.notifyUnauthorized !== false) notifyUnauthorized()
+      }
+      throw new ApiError(body?.errors || `Request failed (${response.status})`, response.status)
     }
-    throw new ApiError(body?.errors || `Request failed (${response.status})`, response.status)
+
+    if (body?.errors) throw new ApiError(body.errors, response.status)
+
+    return body?.data ?? null
   }
-
-  if (body?.errors) throw new ApiError(body.errors, response.status)
-
-  return body?.data ?? null
 }
 
 export async function request<T>(path: string, init?: RequestInit): Promise<T | null> {
@@ -79,12 +80,4 @@ export async function requestRoot<T>(
   options?: RequestOptions
 ): Promise<T | null> {
   return send<T>(apiRootUrl(path), init, options)
-}
-
-/** Resolve a (usually absolute-path) signed URL from the API into a loadable media URL. */
-export function mediaUrl(signedUrl?: string | null) {
-  if (!signedUrl) return undefined
-  if (/^https?:\/\//i.test(signedUrl)) return signedUrl
-  if (!API_ORIGIN) return signedUrl
-  return `${API_ORIGIN}${signedUrl.startsWith("/") ? "" : "/"}${signedUrl}`
 }
