@@ -752,7 +752,7 @@ export function UploadForm() {
           aria-live="polite"
           className="fixed inset-0 z-[100] grid place-items-center bg-background/85 px-4 backdrop-blur-sm"
         >
-          <div className="flex w-full max-w-sm flex-col items-center gap-3 rounded-xl border bg-card p-6 text-center shadow-lg">
+          <div className="flex w-full max-w-xs flex-col items-center gap-3 rounded-xl border bg-card p-6 text-center shadow-lg">
             <LoaderCircle className="size-8 animate-spin text-primary" />
             <div className="flex flex-col gap-1">
               <p className="font-medium">Fetching audio...</p>
