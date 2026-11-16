@@ -1,5 +1,6 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { AuthForm, type AuthMode } from "@/components/auth/AuthForm"
+import { UNAUTHORIZED_EVENT } from "@/lib/session"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 
 type AuthDialogValue = {
@@ -23,6 +24,17 @@ export function AuthDialogProvider({ children }: { children: ReactNode }) {
     }),
     []
   )
+
+  // Any API call that ends in 401 (guest, or a session that could not be refreshed) lands here.
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setMode("sign-in")
+      setVerifying(false)
+      setOpen(true)
+    }
+    window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized)
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized)
+  }, [])
 
   return (
     <AuthDialogContext.Provider value={value}>

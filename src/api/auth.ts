@@ -123,8 +123,8 @@ export async function resendVerification(input: ResendVerificationInput) {
   return message
 }
 
-export async function getCurrentUser() {
-  const user = await requestRoot<UserResponse>("/me")
+export async function getCurrentUser(options?: { notifyUnauthorized?: boolean }) {
+  const user = await requestRoot<UserResponse>("/me", undefined, options)
   if (!user) throw new Error("Could not load your account")
   return user
 }

@@ -13,8 +13,14 @@ type RefreshResponse = {
 
 let refreshPromise: Promise<boolean> | null = null
 
-async function performRefresh() {
-  if (!getStoredSession()) return false
+const REFRESH_LOCK = "sonetopia:token-refresh"
+
+async function rotate(staleToken: string) {
+  const current = getStoredSession()
+  if (!current) return false
+  // Another tab rotated the cookie while this one waited for the lock; reusing the
+  // old refresh token would be treated as theft and revoke the whole token family.
+  if (current.token !== staleToken) return true
 
   try {
     const response = await fetch(apiRootUrl("/auth/refresh"), {
@@ -34,7 +40,19 @@ async function performRefresh() {
   }
 }
 
-/** Single-flight refresh so concurrent 401s share one rotation request. */
+async function performRefresh() {
+  const staleToken = getStoredSession()?.token
+  if (!staleToken) return false
+  if (typeof navigator !== "undefined" && navigator.locks) {
+    return navigator.locks.request(REFRESH_LOCK, () => rotate(staleToken))
+  }
+  return rotate(staleToken)
+}
+
+/**
+ * Single-flight refresh so concurrent 401s share one rotation request. The backend rotates
+ * the refresh cookie and revokes the family on reuse, so tabs also serialize via Web Locks.
+ */
 export function refreshAccessToken() {
   refreshPromise ??= performRefresh().finally(() => {
     refreshPromise = null

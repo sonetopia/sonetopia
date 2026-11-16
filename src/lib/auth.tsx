@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!stored) return
 
-    getCurrentUser()
+    getCurrentUser({ notifyUnauthorized: false })
       .then((currentUser) => {
         if (cancelled) return
         const next = { ...stored, user: currentUser }

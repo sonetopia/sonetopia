@@ -28,6 +28,8 @@ export type SessionSource = {
 
 export const SESSION_KEY = "sonetopia:session"
 export const UNAUTHORIZED_EVENT = "sonetopia:unauthorized"
+/** Message of the error thrown after a 401 has already opened the sign-in dialog; toasts skip it. */
+export const SIGN_IN_REQUIRED_MESSAGE = "Please sign in to continue."
 
 export function getStoredSession(): AuthSession | null {
   const session = loadJSON<AuthSession | null>(SESSION_KEY, null)
