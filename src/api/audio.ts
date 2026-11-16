@@ -54,6 +54,38 @@ export type FetchedAudioResponse = {
   coverFileSize: number | null
 }
 
+export type SearchSource = "youtube_music" | "youtube" | "soundcloud"
+
+export type AudioSearchResult = {
+  title: string | null
+  url: string
+  /** Null for most `youtube_music` results; only known after the audio is fetched. */
+  uploader: string | null
+  duration: number | null
+  thumbnail: string | null
+  source: SearchSource
+  inLibrary: boolean
+  libraryAudioId: string | null
+}
+
+export type AudioSearchResponse = {
+  /** The source that produced this page; null when nothing was found. */
+  source: SearchSource | null
+  offset: number
+  limit: number
+  hasMore: boolean
+  results: AudioSearchResult[]
+}
+
+export type SearchAudioParams = {
+  query: string
+  offset?: number
+  limit?: number
+  /** Pass the previous response's source for every page after the first. */
+  source?: SearchSource | null
+  signal?: AbortSignal
+}
+
 export type CreateAudioFromTempInput = {
   tempId: string
   title: string
@@ -105,6 +137,25 @@ export async function fetchAudioByUrl(url: string, withThumbnail: boolean) {
   })
   if (!fetched) throw new Error("Could not fetch audio from that URL")
   return fetched
+}
+
+export async function searchAudio({
+  query,
+  offset = 0,
+  limit = 10,
+  source,
+  signal,
+}: SearchAudioParams): Promise<AudioSearchResponse> {
+  const params = new URLSearchParams({ q: query, limit: String(limit), offset: String(offset) })
+  if (source) params.set("source", source)
+  const data = await request<AudioSearchResponse>(`/audio/search?${params}`, { signal })
+  return {
+    source: data?.source ?? null,
+    offset: data?.offset ?? offset,
+    limit: data?.limit ?? limit,
+    hasMore: data?.hasMore ?? false,
+    results: data?.results ?? [],
+  }
 }
 
 export async function createAudioFromTemp(input: CreateAudioFromTempInput) {
