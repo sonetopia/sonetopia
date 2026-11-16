@@ -1,5 +1,10 @@
 import { apiRootUrl, apiUrl, mediaUrl } from "@/api/config"
-import { getAccessToken, getStoredSession, notifyUnauthorized } from "@/lib/session"
+import {
+  getAccessToken,
+  getStoredSession,
+  notifyUnauthorized,
+  SIGN_IN_REQUIRED_MESSAGE,
+} from "@/lib/session"
 import { refreshAccessToken } from "@/lib/token-refresh"
 
 export { apiRootUrl, apiUrl, mediaUrl }
@@ -17,6 +22,12 @@ export class ApiError extends Error {
     this.name = "ApiError"
     this.status = status
   }
+}
+
+function fallbackMessage(status: number) {
+  if (status === 504) return "The server took too long to respond. Please try again."
+  if (status === 502 || status === 503) return "The server is unavailable right now. Please try again."
+  return `Request failed (${status})`
 }
 
 type RequestOptions = {
@@ -59,9 +70,13 @@ async function send<T>(
           refreshed = true
           continue
         }
-        if (options.notifyUnauthorized !== false) notifyUnauthorized()
+        if (options.notifyUnauthorized !== false) {
+          notifyUnauthorized()
+          throw new ApiError(SIGN_IN_REQUIRED_MESSAGE, 401)
+        }
       }
-      throw new ApiError(body?.errors || `Request failed (${response.status})`, response.status)
+      // Proxies answer 502/504 with an HTML page, so there is no `errors` to show.
+      throw new ApiError(body?.errors || fallbackMessage(response.status), response.status)
     }
 
     if (body?.errors) throw new ApiError(body.errors, response.status)

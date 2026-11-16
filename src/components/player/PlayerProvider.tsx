@@ -112,6 +112,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const switchingSourceRef = useRef(false)
   const signedUrlsRef = useRef(new Map<string, string>())
   const signedUrlRequestsRef = useRef(new Map<string, Promise<string>>())
+  const liveRef = useRef<{ queue: Track[]; currentIndex: number; repeat: RepeatMode }>({
+    queue: [],
+    currentIndex: -1,
+    repeat: "off",
+  })
 
   const [restoredQueue] = useState(() => loadQueueSnapshot(user?.id))
   const [prefs, setPrefs] = useState<PlayerPrefs>(() =>
@@ -136,6 +141,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const currentCoverUrl = useCoverUrl(current)
 
   useEffect(() => saveJSON(PLAYER_KEY, prefs), [prefs])
+
+  useEffect(() => {
+    liveRef.current = { queue, currentIndex, repeat }
+  }, [queue, currentIndex, repeat])
 
   useEffect(() => {
     try {
@@ -182,11 +191,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     return request
   }, [])
 
-  const step = useCallback(
-    (delta: 1 | -1) => stepIndex(queue.length, currentIndex, delta, repeat),
-    [queue.length, currentIndex, repeat]
-  )
-
   const playTracks = useCallback(
     (tracks: Track[], startIndex = 0, shuffleOverride = shuffle) => {
       if (tracks.length === 0) return
@@ -201,15 +205,45 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const playTrack = useCallback((track: Track) => playTracks([track], 0), [playTracks])
 
+  /**
+   * Move to `target` and start its audio *synchronously* when the signed URL is already
+   * cached. iOS suspends a backgrounded page shortly after its audio stops, so waiting for a
+   * React render + effect (or a network round trip) between tracks can freeze the queue until
+   * the app is reopened. Starting the next source inside the same task as the `ended` event or
+   * the lock-screen action keeps the audio session alive.
+   */
+  const goTo = useCallback((target: number) => {
+    const { queue: liveQueue } = liveRef.current
+    const track = liveQueue[target]
+    const audio = audioRef.current
+    const url = track ? signedUrlsRef.current.get(track.id) : undefined
+
+    if (audio && track && url && !signedUrlExpired(url)) {
+      loadedRef.current = `${track.id}:${url}`
+      loadingSrcRef.current = null
+      switchingSourceRef.current = true
+      audio.src = url
+      audio.currentTime = 0
+      void audio.play().catch(() => setIsPlaying(false))
+      setPlaybackSrc({ trackId: track.id, url })
+      setPosition(0)
+      setDuration(track.duration || 0)
+    }
+
+    liveRef.current = { ...liveRef.current, currentIndex: target }
+    setCurrentIndex(target)
+    setIsPlaying(true)
+  }, [])
+
   const next = useCallback(() => {
-    const target = step(1)
+    const { queue: liveQueue, currentIndex: index, repeat: mode } = liveRef.current
+    const target = stepIndex(liveQueue.length, index, 1, mode)
     if (target === -1) {
       setIsPlaying(false)
       return
     }
-    setCurrentIndex(target)
-    setIsPlaying(true)
-  }, [step])
+    goTo(target)
+  }, [goTo])
 
   const previous = useCallback(() => {
     const audio = audioRef.current
@@ -217,14 +251,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       audio.currentTime = 0
       return
     }
-    const target = step(-1)
+    const { queue: liveQueue, currentIndex: index, repeat: mode } = liveRef.current
+    const target = stepIndex(liveQueue.length, index, -1, mode)
     if (target === -1) {
       if (audio) audio.currentTime = 0
       return
     }
-    setCurrentIndex(target)
-    setIsPlaying(true)
-  }, [step])
+    goTo(target)
+  }, [goTo])
 
   const toggle = useCallback(() => {
     if (currentIndex === -1) return
@@ -383,6 +417,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused"
     }
   }, [isPlaying])
+
+  // Lets the lock screen show progress; coarse updates are enough (and cheap in background).
+  useEffect(() => {
+    if (!("mediaSession" in navigator) || !current || !(duration > 0)) return
+    try {
+      navigator.mediaSession.setPositionState({
+        duration,
+        position: Math.min(Math.max(position, 0), duration),
+        playbackRate: 1,
+      })
+    } catch {
+      // some browsers reject inconsistent values while metadata loads
+    }
+  }, [current, duration, position])
 
   const setVolume = useCallback(
     (value: number) => updatePrefs({ volume: Math.min(1, Math.max(0, value)) }),
@@ -573,7 +621,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       <audio
         ref={audioRef}
         loop={repeat === "one"}
-        preload="metadata"
+        preload="auto"
         onTimeUpdate={(event) => setPosition(event.currentTarget.currentTime)}
         onLoadedMetadata={(event) => {
           const total = event.currentTarget.duration

@@ -191,7 +191,7 @@ type LibraryValue = {
   trackById: (id: string) => Track | undefined
   tracksByIds: (ids: string[]) => Track[]
   addUploads: (inputs: UploadInput[]) => Promise<number>
-  addFetchedUpload: (input: UrlUploadInput) => Promise<void>
+  addFetchedUpload: (input: UrlUploadInput) => Promise<string>
   removeTrack: (id: string) => Promise<void>
   setTrackDuration: (id: string, duration: number) => void
   updateTrack: (id: string, input: UpdateAudioInput) => Promise<void>
@@ -284,6 +284,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     })
     const track = trackFromDetail(audio)
     setTracks((prev) => [track, ...prev])
+    return track.id
   }, [])
 
   const removeTrack = useCallback(async (id: string) => {

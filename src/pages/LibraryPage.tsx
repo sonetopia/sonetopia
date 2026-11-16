@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
-import { Link } from "react-router-dom"
-import { ChevronLeft, ChevronRight, HardDriveUpload } from "lucide-react"
+import { Link, useSearchParams } from "react-router-dom"
+import { ChevronLeft, ChevronRight, HardDriveUpload, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Select,
@@ -23,6 +23,8 @@ const PAGE_SIZE_ITEMS = PAGE_SIZES.map((size) => ({ value: String(size), label: 
 export function LibraryPage() {
   const { tracks, loading, error } = useLibrary()
   const { playTracks } = usePlayer()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const focusedId = searchParams.get("audio")
   const [query, setQuery] = useState("")
   const [kind, setKind] = useState<KindFilter>("all")
   const [sort, setSort] = useState<SortKey>("recent")
@@ -32,6 +34,7 @@ export function LibraryPage() {
   const filtered = useMemo(() => {
     const keyword = query.trim().toLowerCase()
     const result = tracks.filter((track) => {
+      if (focusedId && track.id !== focusedId) return false
       if (kind !== "all" && track.kind !== kind) return false
       if (!keyword) return true
       return [track.title, track.artist, track.album].some((value) =>
@@ -49,7 +52,7 @@ export function LibraryPage() {
       default:
         return result.sort((a, b) => b.addedAt.localeCompare(a.addedAt))
     }
-  }, [tracks, query, kind, sort])
+  }, [tracks, query, kind, sort, focusedId])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
   const currentPage = Math.min(page, pageCount)
@@ -77,6 +80,16 @@ export function LibraryPage() {
       >
         {uploadButton}
       </PageHeader>
+
+      {focusedId ? (
+        <div className="flex items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2 text-sm">
+          <span className="text-muted-foreground">Showing the audio you selected.</span>
+          <Button variant="ghost" size="sm" onClick={() => setSearchParams({}, { replace: true })}>
+            <X />
+            Show all
+          </Button>
+        </div>
+      ) : null}
 
       <TrackFilters
         query={query}
